@@ -1,0 +1,46 @@
+# Bolt.new ignore file
+# Files listed here will be excluded from Bolt imports
+
+# Large data files (67.89 MB + 11.98 MB)
+client/data/warehouse-data.json
+Maharashtra_Warehouse_Dataset_50000.csv
+
+# Build artifacts (not needed in Bolt)
+dist/
+dist-ssr/
+*.js.map
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# Lock files (too large, Bolt regenerates)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Git
+.git/
+.gitattributes
+
+# Documentation (reduce size)
+PROFESSIONAL_UI_ENHANCEMENT.md
+ML_ALGORITHMS_DOCUMENTATION.md
+ENHANCEMENT_SUMMARY.md
+AI_RECOMMENDATIONS.md
+AI_RECOMMENDATIONS_FIXED.md
+ARCHITECTURE_FIX.md
+ISSUES_FIXED.md
+PROJECT_SETUP.md
+QUICK_START.md
+README-UPDATES.md
+DATA_FILES.md
+GIT_LFS_OPTION.md
+GITHUB_SETUP.md
+
+# Backup files
+*.backup
+*.old

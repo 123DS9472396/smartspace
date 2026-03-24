@@ -1,0 +1,2 @@
+client/data/warehouse-data.json filter=lfs diff=lfs merge=lfs -text
+Maharashtra_Warehouse_Dataset_50000.csv filter=lfs diff=lfs merge=lfs -text

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GST Registration Certificate - Template</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Times New Roman', serif; background: #f5f5f5; padding: 20px; }
+    .certificate {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      border: 3px solid #1a237e;
+      padding: 0;
+      position: relative;
+    }
+    .header {
+      background: linear-gradient(135deg, #1a237e, #283593);
+      color: white;
+      padding: 20px 30px;
+      text-align: center;
+    }
+    .header img { height: 60px; margin-bottom: 8px; }
+    .header h1 { font-size: 22px; letter-spacing: 2px; margin-bottom: 4px; }
+    .header h2 { font-size: 16px; font-weight: normal; letter-spacing: 1px; }
+    .header h3 { font-size: 13px; font-weight: normal; margin-top: 4px; color: #bbdefb; }
+
+    .body-section { padding: 25px 35px; }
+
+    .cert-title {
+      text-align: center;
+      font-size: 20px;
+      font-weight: bold;
+      color: #1a237e;
+      margin-bottom: 5px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .cert-subtitle {
+      text-align: center;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 20px;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      gap: 0;
+      border: 1px solid #ccc;
+      margin-bottom: 20px;
+    }
+    .info-grid .label,
+    .info-grid .value {
+      padding: 10px 14px;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 14px;
+    }
+    .info-grid .label {
+      background: #e8eaf6;
+      color: #1a237e;
+      font-weight: bold;
+      border-right: 1px solid #ccc;
+    }
+    .info-grid .value {
+      color: #333;
+    }
+    .info-grid .value.gstin {
+      font-size: 18px;
+      font-weight: bold;
+      color: #1a237e;
+      letter-spacing: 2px;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: bold;
+      color: #1a237e;
+      margin: 20px 0 10px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #e8eaf6;
+    }
+
+    .goods-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .goods-table th {
+      background: #e8eaf6;
+      color: #1a237e;
+      padding: 8px 12px;
+      text-align: left;
+      border: 1px solid #ccc;
+    }
+    .goods-table td {
+      padding: 8px 12px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .signature-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 40px;
+      padding-top: 20px;
+    }
+    .qr-code {
+      width: 100px;
+      height: 100px;
+      border: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #999;
+      background: #fafafa;
+    }
+    .signature-box {
+      text-align: center;
+    }
+    .signature-line {
+      width: 200px;
+      border-top: 1px solid #333;
+      margin-bottom: 5px;
+    }
+    .signature-box p {
+      font-size: 12px;
+      color: #555;
+    }
+
+    .footer {
+      background: #e8eaf6;
+      padding: 12px 35px;
+      font-size: 11px;
+      color: #555;
+      text-align: center;
+      border-top: 1px solid #ccc;
+    }
+
+    .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-size: 80px;
+      color: rgba(26, 35, 126, 0.04);
+      font-weight: bold;
+      letter-spacing: 10px;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .note-box {
+      background: #fff3e0;
+      border: 1px solid #ffcc02;
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin: 20px 0;
+      font-size: 13px;
+      color: #e65100;
+    }
+    .note-box strong { color: #bf360c; }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .certificate { border-width: 2px; }
+      .note-box { display: none; }
+    }
+
+    .btn-group {
+      text-align: center;
+      margin: 20px 0;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 24px;
+      margin: 0 8px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: Arial, sans-serif;
+    }
+    .btn-print { background: #1a237e; color: white; }
+    .btn-download { background: #43a047; color: white; }
+    .btn:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+
+  <div class="note-box" style="max-width: 800px; margin: 0 auto 20px;">
+    <strong>📋 GST Certificate Template for SmartSpace Warehouse Owners</strong><br>
+    This is a <strong>sample template</strong> showing the format of a valid GST Registration Certificate.
+    Replace the placeholder values with your actual GST details when uploading to the platform.
+    You can print this or save as PDF for reference.
+  </div>
+
+  <div class="btn-group">
+    <button class="btn btn-print" onclick="window.print()">🖨️ Print Certificate</button>
+    <button class="btn btn-download" onclick="downloadAsPDF()">📥 Save as PDF</button>
+  </div>
+
+  <div class="certificate">
+    <div class="watermark">GST CERTIFICATE</div>
+
+    <!-- Header -->
+    <div class="header">
+      <h3>GOVERNMENT OF INDIA</h3>
+      <h1>GOODS AND SERVICES TAX</h1>
+      <h2>Certificate of Registration</h2>
+      <h3>Issued under Section 25 of the CGST Act, 2017 and the corresponding provisions of the SGST/UTGST Act</h3>
+    </div>
+
+    <!-- Body -->
+    <div class="body-section">
+      <div class="cert-title">Registration Certificate</div>
+      <div class="cert-subtitle">Form GST REG-06 — [See Rule 10(1)]</div>
+
+      <!-- Main Info -->
+      <div class="info-grid">
+        <div class="label">GSTIN</div>
+        <div class="value gstin">27AABCU9603R1ZM</div>
+
+        <div class="label">Legal Name</div>
+        <div class="value">M/S SMARTSPACE WAREHOUSING PVT LTD</div>
+
+        <div class="label">Trade Name</div>
+        <div class="value">SMARTSPACE WAREHOUSE</div>
+
+        <div class="label">Constitution</div>
+        <div class="value">Private Limited Company</div>
+
+        <div class="label">Address</div>
+        <div class="value">
+          Plot No. 45, MIDC Industrial Area, Bhosari<br>
+          Pune, Maharashtra — 411026
+        </div>
+
+        <div class="label">Date of Registration</div>
+        <div class="value">01/07/2024</div>
+
+        <div class="label">Date of Liability</div>
+        <div class="value">01/07/2024</div>
+
+        <div class="label">Type of Registration</div>
+        <div class="value">Regular — Monthly return filing</div>
+
+        <div class="label">Validity</div>
+        <div class="value">Valid until cancelled</div>
+
+        <div class="label">PAN</div>
+        <div class="value">AABCU9603R</div>
+
+        <div class="label">State / UT Code</div>
+        <div class="value">27 — Maharashtra</div>
+
+        <div class="label">Jurisdictional Office</div>
+        <div class="value">CGST Division — Pune (West), Range — II</div>
+      </div>
+
+      <!-- Nature of Business -->
+      <div class="section-title">Nature of Business Activity</div>
+      <table class="goods-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Business Activity</th>
+            <th>HSN/SAC Code</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1</td>
+            <td>Warehouse Services</td>
+            <td>SAC 996721</td>
+            <td>Storage and warehousing services</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>Rental Services</td>
+            <td>SAC 997212</td>
+            <td>Rental of commercial / industrial property</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Logistics Support</td>
+            <td>SAC 996729</td>
+            <td>Other storage and warehousing services</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Authorized Signatory -->
+      <div class="section-title">Authorized Signatory</div>
+      <div class="info-grid">
+        <div class="label">Name</div>
+        <div class="value">Rajesh Kumar Sharma</div>
+        <div class="label">Designation</div>
+        <div class="value">Director</div>
+        <div class="label">Mobile</div>
+        <div class="value">+91 98765 43210</div>
+        <div class="label">Email</div>
+        <div class="value">rajesh@smartspace-warehouse.com</div>
+      </div>
+
+      <!-- Signature Section -->
+      <div class="signature-section">
+        <div class="qr-code">
+          [QR Code]<br>Scan to verify
+        </div>
+        <div class="signature-box">
+          <div class="signature-line"></div>
+          <p><strong>Authorized Signatory</strong></p>
+          <p>Date: ___/___/______</p>
+        </div>
+        <div class="signature-box">
+          <div class="signature-line"></div>
+          <p><strong>Superintendent / Assistant Commissioner</strong></p>
+          <p>CGST, Pune Division</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      This is a computer-generated certificate. Verify authenticity at
+      <strong>https://services.gst.gov.in/services/searchtp</strong>
+      | Generated on: <span id="genDate"></span>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('genDate').textContent = new Date().toLocaleDateString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric'
+    });
+
+    function downloadAsPDF() {
+      window.print();
+    }
+  </script>
+</body>
+</html>

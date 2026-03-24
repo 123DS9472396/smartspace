@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Platform - Technology Layer Diagram</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            padding: 30px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .title {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .diagram {
+            position: relative;
+        }
+        
+        /* USER LAYER */
+        .layer {
+            margin-bottom: 40px;
+            position: relative;
+        }
+        
+        .layer-title {
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            border-bottom: 2px solid #333;
+            padding-bottom: 5px;
+        }
+        
+        .boxes-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .box {
+            border: 1px solid #999;
+            background: #f9f9f9;
+            padding: 10px 15px;
+            font-size: 0.85em;
+            text-align: center;
+            min-width: 100px;
+            flex-grow: 1;
+        }
+        
+        .box-label {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .box-desc {
+            font-size: 0.75em;
+            color: #666;
+            margin-top: 3px;
+        }
+        
+        /* CONNECTIONS */
+        svg {
+            width: 100%;
+            height: auto;
+            min-height: 200px;
+            margin: 20px 0;
+        }
+        
+        .arrow {
+            stroke: #666;
+            stroke-width: 1.5;
+            fill: none;
+        }
+        
+        .arrow-head {
+            fill: #666;
+        }
+        
+        /* FRONTEND SECTION */
+        .frontend-section {
+            border: 2px solid #333;
+            padding: 20px;
+            margin-bottom: 30px;
+            background: #fafafa;
+        }
+        
+        .section-header {
+            font-size: 1em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .components-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .component-box {
+            border: 1px solid #999;
+            background: #f9f9f9;
+            padding: 10px;
+            text-align: center;
+            font-size: 0.8em;
+            min-height: 70px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        /* AI/BACKEND SECTION */
+        .ai-backend-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .subsection {
+            border: 2px solid #333;
+            padding: 15px;
+            background: #fafafa;
+        }
+        
+        .subsection-title {
+            font-weight: bold;
+            margin-bottom: 12px;
+            font-size: 0.9em;
+        }
+        
+        .sub-boxes {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .sub-box {
+            border: 1px solid #999;
+            background: #f9f9f9;
+            padding: 8px 10px;
+            font-size: 0.8em;
+            text-align: center;
+        }
+        
+        /* DATABASE SECTION */
+        .database-section {
+            border: 2px solid #333;
+            padding: 20px;
+            background: #fafafa;
+        }
+        
+        .db-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+        }
+        
+        .db-box {
+            border: 1px solid #999;
+            background: #f9f9f9;
+            padding: 8px 5px;
+            font-size: 0.75em;
+            text-align: center;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* STORAGE */
+        .storage-box {
+            border: 2px solid #333;
+            padding: 15px;
+            background: #fafafa;
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .flow-label {
+            font-size: 0.7em;
+            color: #666;
+            font-style: italic;
+            margin: 5px 0;
+        }
+        
+        .note {
+            background: #fffacd;
+            border: 1px solid #999;
+            padding: 15px;
+            margin-top: 30px;
+            font-size: 0.85em;
+            color: #333;
+        }
+        
+        .note-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="title">3.1 Technology Layer Diagram - Warehouse Platform</div>
+        
+        <div class="diagram">
+            
+            <!-- USER LAYER -->
+            <div class="layer">
+                <div class="layer-title">User Layer</div>
+                <div class="boxes-row">
+                    <div class="box">
+                        <div class="box-label">Seeker</div>
+                    </div>
+                    <div class="box">
+                        <div class="box-label">Owner</div>
+                    </div>
+                    <div class="box">
+                        <div class="box-label">Admin</div>
+                    </div>
+                    <div style="flex: 2;"></div>
+                </div>
+            </div>
+
+            <!-- USER TO FRONTEND ARROW -->
+            <svg style="height: 30px; margin: 10px 0;">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" class="arrow-head"/>
+                    </marker>
+                </defs>
+                <line x1="50" y1="5" x2="50" y2="25" class="arrow" marker-end="url(#arrowhead)"/>
+                <line x1="150" y1="5" x2="150" y2="25" class="arrow" marker-end="url(#arrowhead)"/>
+                <line x1="250" y1="5" x2="250" y2="25" class="arrow" marker-end="url(#arrowhead)"/>
+            </svg>
+
+            <!-- FRONTEND LAYER -->
+            <div class="frontend-section">
+                <div class="section-header">📱 FRONTEND LAYER - React + TypeScript + Vite</div>
+                <div class="components-grid">
+                    <div class="component-box">
+                        <strong>Owner</strong><br/>Dashboard
+                    </div>
+                    <div class="component-box">
+                        <strong>Seeker</strong><br/>Dashboard
+                    </div>
+                    <div class="component-box">
+                        <strong>Admin</strong><br/>Dashboard
+                    </div>
+                    <div class="component-box">
+                        <strong>Search</strong><br/>Interface
+                    </div>
+                </div>
+                <div class="flow-label">HTTP/REST API ↔ JWT Authentication</div>
+            </div>
+
+            <!-- FRONTEND TO BACKEND ARROW -->
+            <svg style="height: 30px; margin: 10px 0;">
+                <defs>
+                    <marker id="arrowhead2" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" class="arrow-head"/>
+                    </marker>
+                </defs>
+                <line x1="50%" y1="5" x2="50%" y2="25" class="arrow" marker-end="url(#arrowhead2)"/>
+                <text x="55%" y="15" font-size="0.75em" fill="#666">REST API Requests</text>
+            </svg>
+
+            <!-- AI & BACKEND SECTION -->
+            <div class="ai-backend-section">
+                <!-- AI LAYER -->
+                <div class="subsection">
+                    <div class="subsection-title">AI Layer</div>
+                    <div class="sub-boxes">
+                        <div class="sub-box"><strong>Intent Extraction</strong><br/>(OpenAI API)</div>
+                        <div class="sub-box"><strong>Sentiment Analysis</strong><br/>(OpenAI API)</div>
+                        <div class="sub-box"><strong>Chat Assistant</strong><br/>(OpenAI API)</div>
+                    </div>
+                    <div class="flow-label" style="margin-top: 10px;">Natural Language Processing</div>
+                </div>
+
+                <!-- BACKEND SERVICES -->
+                <div class="subsection">
+                    <div class="subsection-title">Backend Services (Supabase REST API)</div>
+                    <div class="sub-boxes">
+                        <div class="sub-box"><strong>Auth Service</strong></div>
+                        <div class="sub-box"><strong>Warehouse Service</strong></div>
+                        <div class="sub-box"><strong>Booking Service</strong></div>
+                        <div class="sub-box"><strong>Search Service</strong></div>
+                        <div class="sub-box"><strong>Profile Service</strong></div>
+                    </div>
+                    <div class="flow-label" style="margin-top: 10px;">JWT Verification + RLS Policies</div>
+                </div>
+            </div>
+
+            <!-- TO DATABASE ARROW -->
+            <svg style="height: 30px; margin: 10px 0;">
+                <defs>
+                    <marker id="arrowhead3" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" class="arrow-head"/>
+                    </marker>
+                </defs>
+                <line x1="50%" y1="5" x2="50%" y2="25" class="arrow" marker-end="url(#arrowhead3)"/>
+                <text x="52%" y="15" font-size="0.75em" fill="#666">SQL Queries with RLS</text>
+            </svg>
+
+            <!-- DATABASE LAYER -->
+            <div class="database-section">
+                <div class="section-header">Database Layer - PostgreSQL (Supabase)</div>
+                <div class="db-grid">
+                    <div class="db-box"><strong>users</strong></div>
+                    <div class="db-box"><strong>warehouse_submissions</strong></div>
+                    <div class="db-box"><strong>bookings</strong></div>
+                    <div class="db-box"><strong>reviews</strong></div>
+                    <div class="db-box"><strong>warehouse_images</strong></div>
+                    <div class="db-box"><strong>profiles</strong></div>
+                </div>
+                <div class="flow-label">Row Level Security (RLS) Policies - Authorization at DB Level</div>
+            </div>
+
+            <!-- TO STORAGE ARROW -->
+            <svg style="height: 30px; margin: 10px 0;">
+                <defs>
+                    <marker id="arrowhead4" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                        <polygon points="0 0, 10 3, 0 6" class="arrow-head"/>
+                    </marker>
+                </defs>
+                <line x1="50%" y1="5" x2="50%" y2="25" class="arrow" marker-end="url(#arrowhead4)"/>
+                <text x="52%" y="15" font-size="0.75em" fill="#666">File URLs</text>
+            </svg>
+
+            <!-- STORAGE LAYER -->
+            <div class="storage-box">
+                <strong>File Storage Layer - Supabase Storage (S3-Compatible)</strong><br/>
+                <div style="margin-top: 8px; font-size: 0.85em;">
+                    Warehouse Images | Profile Pictures | Documents<br/>
+                    <span style="font-size: 0.75em; color: #666;">Public CDN URLs - HTTPS Access</span>
+                </div>
+            </div>
+
+            <!-- KEY FLOWS -->
+            <div class="note">
+                <div class="note-title">🔄 Key Data Flows in System:</div>
+                
+                <div style="margin: 10px 0;">
+                    <strong>1. Owner Creates Listing:</strong><br/>
+                    Owner Dashboard → Form Input → Warehouse Service → PostgreSQL Insert → RLS Check → Image Upload → Storage
+                </div>
+                
+                <div style="margin: 10px 0;">
+                    <strong>2. Seeker LLM Search:</strong><br/>
+                    Search Query → OpenAI Intent Extraction → Search Service → PostgreSQL Query (RLS Applied) → Results with Images → Frontend Display
+                </div>
+                
+                <div style="margin: 10px 0;">
+                    <strong>3. Booking Request:</strong><br/>
+                    Seeker Select Dates → Booking Service → Check Availability → Insert to DB → Real-time Notification → Owner Approval
+                </div>
+                
+                <div style="margin: 10px 0;">
+                    <strong>4. Review & Sentiment:</strong><br/>
+                    Seeker Review → OpenAI Sentiment Analysis → Profile Service → Store in DB → Calculate Rating → Display
+                </div>
+                
+                <div style="margin: 10px 0;">
+                    <strong>Authentication Flow:</strong><br/>
+                    Login → Supabase Auth → JWT Token Generated → Stored in Browser → All Requests Include JWT → Backend Verifies Token → RLS Policies Enforced
+                </div>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>

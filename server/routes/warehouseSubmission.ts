@@ -1,0 +1,174 @@
+import { Router, RequestHandler } from 'express';
+import { createClient } from '@supabase/supabase-js';
+
+const router = Router();
+
+// Use service role for direct database access (bypasses RLS)
+const supabaseServiceRole = createClient(
+  process.env.VITE_SUPABASE_URL || 'https://bsrzqffxgvdebyofmhzg.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzcnpxZmZ4Z3ZkZWJ5b2ZtaHpnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA2MTM0NywiZXhwIjoyMDcyNjM3MzQ3fQ.riHDx30ne4wC2xegEbfVoI0OzRE9Ytp_XZmgmSEwrLc'
+);
+
+/**
+ * POST /api/warehouse-submission
+ * Creates a warehouse submission with file uploads
+ * Uses service role to bypass RLS
+ */
+const createWarehouseSubmission: RequestHandler = async (req, res) => {
+  try {
+    const { 
+      owner_id, 
+      name, 
+      description, 
+      address, 
+      city, 
+      state, 
+      pincode,
+      total_area,
+      price_per_sqft,
+      amenities,
+      features,
+      images,
+      documents
+    } = req.body;
+
+    console.log('📋 [Server] Creating warehouse submission for owner:', owner_id);
+
+    // Validate required fields
+    if (!owner_id || !name || !city || !state || !address) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: owner_id, name, city, state, address'
+      });
+    }
+
+    // Create submission with service role (bypasses RLS)
+    const { data: submission, error: submissionError } = await supabaseServiceRole
+      .from('warehouse_submissions')
+      .insert({
+        owner_id,
+        name,
+        description: description || '',
+        address,
+        city,
+        state,
+        pincode: pincode || '',
+        total_area: parseInt(total_area || '0'),
+        price_per_sqft: parseInt(price_per_sqft || '0'),
+        amenities: amenities || [],
+        features: features || [],
+        images: images || [],
+        documents: documents || {},
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (submissionError) {
+      console.error('❌ Submission error:', submissionError);
+      return res.status(400).json({
+        success: false,
+        error: submissionError.message,
+        code: submissionError.code
+      });
+    }
+
+    console.log('✅ Warehouse submission created:', submission.id);
+
+    // Create notification for owner
+    try {
+      await supabaseServiceRole
+        .from('notifications')
+        .insert({
+          user_id: owner_id,
+          type: 'submission',
+          title: 'Warehouse Submission Received',
+          message: `Your warehouse "${name}" has been submitted for admin review.`,
+          metadata: { submission_id: submission.id }
+        });
+      console.log('📬 Notification created for owner');
+    } catch (notifError) {
+      console.warn('⚠️ Could not create notification:', notifError);
+      // Don't fail the request if notification fails
+    }
+
+    return res.json({
+      success: true,
+      submission: submission,
+      message: 'Warehouse submission created successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+/**
+ * POST /api/warehouse-submission/upload
+ * Uploads files to Supabase Storage using service role
+ */
+const uploadWarehouseFile: RequestHandler = async (req, res) => {
+  try {
+    const { bucket, filename, content, contentType } = req.body;
+
+    if (!bucket || !filename || !content) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: bucket, filename, content'
+      });
+    }
+
+    console.log(`📤 [Server] Uploading ${filename} to bucket: ${bucket}`);
+
+    // Convert base64 to buffer if needed
+    const fileBuffer = Buffer.isBuffer(content) ? content : Buffer.from(content, 'base64');
+
+    // Upload using service role (bypasses RLS)
+    const { data, error } = await supabaseServiceRole.storage
+      .from(bucket)
+      .upload(filename, fileBuffer, {
+        contentType: contentType || 'application/octet-stream',
+        upsert: false,
+        cacheControl: '3600'
+      });
+
+    if (error) {
+      console.error(` ❌ Upload error:`, error);
+      return res.status(400).json({
+        success: false,
+        error: error.message
+      });
+    }
+
+    // Get public URL
+    const { data: urlData } = supabaseServiceRole.storage
+      .from(bucket)
+      .getPublicUrl(filename);
+
+    console.log(`✅ File uploaded: ${urlData.publicUrl}`);
+
+    return res.json({
+      success: true,
+      filename: filename,
+      publicUrl: urlData.publicUrl,
+      path: data?.path
+    });
+
+  } catch (error) {
+    console.error('❌ Server error:', error);
+    return res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Register routes
+router.post('/api/warehouse-submission', createWarehouseSubmission);
+router.post('/api/warehouse-submission/upload', uploadWarehouseFile);
+
+export default router;

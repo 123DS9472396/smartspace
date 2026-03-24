@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Platform - Architecture Diagram</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #1a1a2e;
+            min-height: 100vh;
+            padding: 30px 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(to right, #FF8C42, #FFA34D);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            border-bottom: 3px solid #E67E22;
+        }
+        
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1em;
+            opacity: 0.95;
+        }
+        
+        .content {
+            padding: 30px;
+            background: white;
+        }
+        
+        .diagram-wrapper {
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 30px;
+            min-height: 700px;
+            position: relative;
+        }
+        
+        .architecture {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 20px;
+            height: 100%;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .section-header {
+            background: linear-gradient(to right, #FF8C42, #FFA34D);
+            color: white;
+            padding: 15px;
+            font-weight: 700;
+            font-size: 1.1em;
+            border-bottom: 2px solid #E67E22;
+            text-align: center;
+        }
+        
+        .section-content {
+            padding: 15px;
+            min-height: 400px;
+        }
+        
+        .component {
+            background: #B3E5FC;
+            border: 2px solid #01579B;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+            text-align: center;
+            font-weight: 600;
+            color: #01579B;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .component:hover {
+            background: #80DEEA;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .component.user {
+            background: #FFE0B2;
+            border-color: #E65100;
+            color: #E65100;
+        }
+        
+        .component.service {
+            background: #C8E6C9;
+            border-color: #1B5E20;
+            color: #1B5E20;
+        }
+        
+        .component.ai {
+            background: #F8BBD0;
+            border-color: #880E4F;
+            color: #880E4F;
+        }
+        
+        .component.db {
+            background: #BBDEFB;
+            border-color: #0D47A1;
+            color: #0D47A1;
+        }
+        
+        .divider {
+            height: 1px;
+            background: #ddd;
+            margin: 15px 0;
+        }
+        
+        .info-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f5f5 0%, #efefef 100%);
+            border-left: 4px solid #FF8C42;
+            border-radius: 4px;
+        }
+        
+        .info-box h3 {
+            color: #FF8C42;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .info-box ul {
+            margin-left: 20px;
+            color: #333;
+        }
+        
+        .info-box li {
+            margin: 5px 0;
+            line-height: 1.6;
+        }
+        
+        .footer {
+            background: #f5f5f5;
+            padding: 20px 30px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+            font-size: 0.9em;
+        }
+        
+        .flow-description {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0f7ff;
+            border-radius: 4px;
+            border: 1px solid #90CAF9;
+        }
+        
+        .flow-description h3 {
+            color: #1565C0;
+            margin-bottom: 15px;
+        }
+        
+        .flow-step {
+            margin: 8px 0;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .flow-arrow {
+            display: inline-block;
+            margin: 0 5px;
+            color: #FF8C42;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏗️ Warehouse Platform Architecture</h1>
+            <p>Professional System Design - React + Supabase + OpenAI</p>
+        </div>
+        
+        <div class="content">
+            <div class="diagram-wrapper">
+                <div class="architecture">
+                    <!-- USERS SECTION -->
+                    <div class="section">
+                        <div class="section-header">👥 USERS</div>
+                        <div class="section-content">
+                            <div class="component user">🏢 Warehouse Owner</div>
+                            <div class="component user">🔍 Seeker/Renter</div>
+                            <div class="component user">👨‍💼 Administrator</div>
+                            <div style="margin-top: 30px; font-size: 0.8em; color: #666;">
+                                Submit listings, search warehouses, approve content
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FRONTEND SECTION -->
+                    <div class="section">
+                        <div class="section-header">📱 FRONTEND</div>
+                        <div class="section-content">
+                            <div class="component">Owner Dashboard</div>
+                            <div class="component">Seeker Dashboard</div>
+                            <div class="component">Admin Dashboard</div>
+                            <div class="component">Search Interface</div>
+                            <div class="divider"></div>
+                            <div style="font-size: 0.8em; color: #666; margin-top: 10px;">
+                                <strong>Tech Stack:</strong><br/>
+                                React + TypeScript<br/>
+                                Vite Build Tool<br/>
+                                TailwindCSS Styling
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BACKEND SECTION -->
+                    <div class="section">
+                        <div class="section-header">⚙️ BACKEND & AUTH</div>
+                        <div class="section-content">
+                            <div class="component service">Auth Service</div>
+                            <div class="component service">Warehouse Service</div>
+                            <div class="component service">Booking Service</div>
+                            <div class="component service">Search Service</div>
+                            <div class="component service">Profile Service</div>
+                            <div class="divider"></div>
+                            <div style="font-size: 0.8em; color: #666; margin-top: 10px;">
+                                <strong>Supabase REST API</strong><br/>
+                                JWT Authentication<br/>
+                                RLS Policies
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI/LLM SECTION -->
+                    <div class="section">
+                        <div class="section-header">🤖 AI/LLM</div>
+                        <div class="section-content">
+                            <div class="component ai">Intent Extraction</div>
+                            <div class="component ai">Sentiment Analysis</div>
+                            <div class="component ai">Chat Assistant</div>
+                            <div class="divider"></div>
+                            <div style="font-size: 0.8em; color: #666; margin-top: 20px;">
+                                <strong>OpenAI API</strong><br/>
+                                <br/>
+                                • Natural language search<br/>
+                                • Review sentiment<br/>
+                                • Chat support
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DATABASE SECTION -->
+                    <div class="section">
+                        <div class="section-header">💾 DATABASE</div>
+                        <div class="section-content">
+                            <div class="component db">users</div>
+                            <div class="component db">warehouses</div>
+                            <div class="component db">bookings</div>
+                            <div class="component db">reviews</div>
+                            <div class="component db">warehouse_images</div>
+                            <div class="component db">profiles</div>
+                            <div class="divider"></div>
+                            <div style="font-size: 0.8em; color: #666; margin-top: 5px;">
+                                <strong>PostgreSQL</strong><br/>
+                                RLS Policies<br/>
+                                Real-time Subscriptions
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STORAGE SECTION -->
+                    <div class="section">
+                        <div class="section-header">📸 STORAGE</div>
+                        <div class="section-content">
+                            <div class="component" style="background: #FFF9C4; border-color: #F57F17; color: #F57F17;">Warehouse Images</div>
+                            <div class="component" style="background: #FFF9C4; border-color: #F57F17; color: #F57F17;">Profile Pictures</div>
+                            <div style="margin-top: 30px; font-size: 0.8em; color: #666;">
+                                <strong>Supabase Storage</strong><br/>
+                                <br/>
+                                S3-Compatible<br/>
+                                Public CDN URLs
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flow-description">
+                <h3>📊 Complete System Data Flows</h3>
+                
+                <div class="flow-step">
+                    <strong>Owner Listing Flow:</strong> 
+                    Owner (Frontend) <span class="flow-arrow">→</span> Forms Input <span class="flow-arrow">→</span> Warehouse Service 
+                    <span class="flow-arrow">→</span> PostgreSQL Database <span class="flow-arrow">→</span> Storage (Images) 
+                    <span class="flow-arrow">→</span> Admin Approval <span class="flow-arrow">→</span> Live to Seekers
+                </div>
+
+                <div class="flow-step" style="margin-top: 15px;">
+                    <strong>LLM-Powered Search:</strong> 
+                    Seeker Query <span class="flow-arrow">→</span> React Frontend <span class="flow-arrow">→</span> OpenAI Intent Extraction 
+                    <span class="flow-arrow">→</span> Search Service <span class="flow-arrow">→</span> PostgreSQL Query 
+                    <span class="flow-arrow">→</span> Storage URLs <span class="flow-arrow">→</span> Display Results
+                </div>
+
+                <div class="flow-step" style="margin-top: 15px;">
+                    <strong>Booking Workflow:</strong> 
+                    Seeker Selection <span class="flow-arrow">→</span> Check Availability <span class="flow-arrow">→</span> Create Booking 
+                    <span class="flow-arrow">→</span> Database <span class="flow-arrow">→</span> Real-time Notification <span class="flow-arrow">→</span> Owner Approval
+                </div>
+
+                <div class="flow-step" style="margin-top: 15px;">
+                    <strong>Review & AI Analysis:</strong> 
+                    Submit Review <span class="flow-arrow">→</span> Sentiment Analysis (OpenAI) <span class="flow-arrow">→</span> Store in DB 
+                    <span class="flow-arrow">→</span> Calculate Rating <span class="flow-arrow">→</span> Display on Listing
+                </div>
+            </div>
+
+            <div class="info-box">
+                <h3>🔑 Key Architecture Concepts</h3>
+                <ul>
+                    <li><strong>Monolithic Backend:</strong> All backend logic runs through Supabase REST API (no separate microservices)</li>
+                    <li><strong>JWT Authentication:</strong> Every request includes JWT token verified against user roles</li>
+                    <li><strong>Row Level Security:</strong> PostgreSQL RLS policies enforce authorization at database level</li>
+                    <li><strong>Real-time Subscriptions:</strong> WebSocket connections deliver instant updates to frontend</li>
+                    <li><strong>OpenAI Integration:</strong> Natural language processing for search and sentiment analysis</li>
+                    <li><strong>Stateless Frontend:</strong> React SPA with no server-side sessions; state managed in JWT</li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer">
+            <p>🎓 Professional Architecture Diagram - Warehouse Platform</p>
+            <p>React + TypeScript | Supabase PostgreSQL | OpenAI LLM | Netlify Hosting</p>
+        </div>
+    </div>
+
+    <script>
+        // Add hover effects
+        document.querySelectorAll('.component').forEach(el => {
+            el.addEventListener('click', function() {
+                alert('Component: ' + this.textContent.trim());
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Debug Supabase Query</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Supabase Query Debug</h1>
+  <div id="output"></div>
+
+  <script>
+    const output = document.getElementById('output');
+
+    const supabaseUrl = 'https://bsrzqffxgvdebyofmhzg.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzcnpxZmZ4Z3ZkZWJ5b2ZtaHpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNjEzNDcsImV4cCI6MjA3MjYzNzM0N30.VyCEg70kLhTV2l8ZyG9CfPb00FBdVrlVBcBUhyI88Z8';
+
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    async function testQuery() {
+      output.innerHTML += '<p>Testing query...</p>';
+
+      try {
+        // Test 1: Count all warehouses
+        const { count: totalCount, error: countError } = await supabase
+          .from('warehouses')
+          .select('*', { count: 'exact', head: true });
+
+        if (countError) {
+          output.innerHTML += '<p style="color:red">Count Error: ' + countError.message + '</p>';
+          return;
+        }
+
+        output.innerHTML += '<p style="color:green">Total warehouses: ' + totalCount + '</p>';
+
+        // Test 2: Count by state
+        const { count: maharashtraCount, error: stateError } = await supabase
+          .from('warehouses')
+          .select('*', { count: 'exact', head: true })
+          .eq('state', 'Maharashtra');
+
+        if (stateError) {
+          output.innerHTML += '<p style="color:red">State Error: ' + stateError.message + '</p>';
+          return;
+        }
+
+        output.innerHTML += '<p style="color:green">Maharashtra warehouses: ' + maharashtraCount + '</p>';
+
+        // Test 3: Fetch first 5
+        const { data, error } = await supabase
+          .from('warehouses')
+          .select('*')
+          .eq('state', 'Maharashtra')
+          .eq('status', 'active')
+          .limit(5);
+
+        if (error) {
+          output.innerHTML += '<p style="color:red">Fetch Error: ' + error.message + '</p>';
+          return;
+        }
+
+        output.innerHTML += '<p style="color:green">Fetched ' + data.length + ' warehouses</p>';
+        output.innerHTML += '<pre>' + JSON.stringify(data[0], null, 2) + '</pre>';
+
+      } catch (error) {
+        output.innerHTML += '<p style="color:red">Exception: ' + error.message + '</p>';
+      }
+    }
+
+    testQuery();
+  </script>
+</body>
+</html>

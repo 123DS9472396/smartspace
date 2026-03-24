@@ -1,0 +1,1131 @@
+%% ==========================================================
+%% Springer Nature Journal Article — sn-jnl class
+%% Math and Physical Sciences Numbered Reference Style
+%% ==========================================================
+%% Changes from original:
+%%   1. Citations [1]–[10] added at end of relevant paragraphs
+%%   2. Bibliography author names corrected per actual PDFs
+%%   3. Algorithm Used column added to literature survey table
+%%   4. All user-written content preserved exactly
+%% ==========================================================
+
+\documentclass[pdflatex,sn-mathphys-num]{sn-jnl}
+
+%%%% Standard Packages %%%%
+\usepackage{graphicx}
+\usepackage{multirow}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{amsthm}
+\usepackage{mathrsfs}
+\usepackage[title]{appendix}
+\usepackage{xcolor}
+\usepackage{textcomp}
+\usepackage{manyfoot}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algorithmicx}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{tabularx}
+\usepackage{threeparttable}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+
+\theoremstyle{thmstyleone}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+
+\theoremstyle{thmstyletwo}
+\newtheorem{example}{Example}
+\newtheorem{remark}{Remark}
+
+\theoremstyle{thmstylethree}
+\newtheorem{definition}{Definition}
+
+\raggedbottom
+
+%% ==========================================================
+%% DOCUMENT START
+%% ==========================================================
+
+\begin{document}
+
+\title[SmartSpace: Warehouse Recommendation]{Intelligent Warehouse Recommendation
+for Maharashtra Using Hybrid Machine Learning
+and LLM Assistance}
+
+%%% Authors %%%
+
+\author*[1]{\fnm{Varsha} \sur{Wangikar}}
+\email{ksdeherkar@apsit.edu.in}
+
+\author[1]{\fnm{Dipesh} \sur{Sharma}}
+\email{dipeshsharma34@apsit.edu.in}
+
+\author[1]{\fnm{Pranjal} \sur{Zambre}}
+\email{pranjalzambre115@apsit.edu.in}
+
+\author[1]{\fnm{Manthan} \sur{Shinde}}
+\email{manthanshinde120@apsit.edu.in}
+
+\author[1]{\fnm{Sahil} \sur{Shinde}}
+\email{sahilshinde13@apsit.edu.in}
+
+%%% Affiliation %%%
+
+\affil*[1]{%
+  \orgdiv{Department of Computer Engineering},
+  \orgname{A.P. Shah Institute of Technology},
+  \orgaddress{%
+    \city{Thane},
+    \country{India}%
+  }%
+}
+
+%%% Abstract %%%
+
+\abstract{
+We built SmartSpace, a platform that helps people find and pick
+the right warehouse in Maharashtra, India.
+It works with a database of more than 10,000 warehouse records.
+The core of the system is a hybrid machine learning setup
+where K-Nearest Neighbors and Random Forest models feed into
+a meta-learner, and the output is a stable, reliable warehouse ranking.
+A weighted scoring method looks at things like how close the warehouse is,
+what it costs, how much space it has, what type of facility it is,
+whether it is available, and how users have rated it.
+We also brought in Meta Llama 3.3 70B as a large language model
+so the platform can give clear explanations and suggest alternatives
+in plain language.
+If the LLM becomes unavailable for any reason, the system falls back
+to local ML models and keeps working without interruption.
+The whole thing runs on Supabase PostgreSQL, React TypeScript,
+and Express.js.
+In our early tests, SmartSpace cut user search time by about 60\%
+and hit a recommendation success rate above 85\%.
+We think this kind of setup, where ML handles the numbers and an LLM
+handles the reasoning, is a practical way forward for warehouse
+selection tools.
+}
+
+%%% Keywords %%%
+
+\keywords{
+warehouse recommendation,
+hybrid machine learning,
+random forest,
+K-nearest neighbors,
+large language models,
+intelligent logistics,
+supply chain optimization
+}
+
+\maketitle
+
+%% ==========================================================
+%% SECTION 1 — INTRODUCTION
+%% ==========================================================
+
+\section{Introduction}\label{sec1}
+
+Maharashtra has witnessed significant growth in manufacturing,
+retail distribution, and e-commerce operations over the past decade,
+leading to increased demand for flexible and location-specific
+warehousing solutions.
+Despite this growth, the process of identifying suitable warehouses
+remains largely manual, requiring businesses to consult brokers,
+browse fragmented registries, and conduct repeated site visits.
+This approach frequently results in extended search durations,
+mismatched facility selections, and elevated operational costs,
+particularly for small and medium enterprises
+\cite{b1, b5, b8}.
+
+The challenge of warehouse selection extends beyond availability
+alone.
+Decision-makers must simultaneously consider geographic proximity,
+pricing constraints, storage capacity, facility specialization,
+compliance status, and service quality.
+Existing digital platforms typically address only isolated aspects
+of this decision-making process and lack the capability to provide
+multi-criteria recommendations with transparent explanations
+\cite{b2}.
+Additionally, newly listed or infrequently booked warehouses often
+suffer from limited historical data, making accurate recommendations
+difficult through traditional collaborative filtering approaches
+\cite{b10}.
+
+SmartSpace addresses these limitations through an intelligent
+warehouse recommendation platform that integrates structured
+machine learning techniques with large language model assistance.
+The system matches warehouse seekers with suitable facilities
+by jointly analyzing explicit user preferences and implicit
+constraints derived from conversational input.
+Machine learning models generate stable numerical rankings,
+while the language model provides contextual explanations
+and alternative suggestions to enhance user understanding
+and trust \cite{b3, b7}.
+
+The primary contributions of this work are fourfold.
+First, a domain-specific scoring function is proposed that
+consolidates location relevance, pricing compatibility,
+storage adequacy, facility type, availability, verification status,
+and quality ratings into a single interpretable metric
+\cite{b1, b5}.
+Second, a hybrid recommendation framework is developed by
+combining K-Nearest Neighbors and Random Forest algorithms
+through a meta-learning approach to improve ranking consistency
+across diverse user profiles \cite{b10}.
+Third, an LLM-assisted explanation layer is integrated to
+support natural language interaction and semantic refinement
+of recommendations, accompanied by a robust fallback mechanism
+to ensure uninterrupted service \cite{b7, b4}.
+Finally, a production-ready implementation is delivered using
+Supabase PostgreSQL, React TypeScript, and a modular API-driven
+backend, demonstrating practical applicability within real-world
+logistics workflows \cite{b6}.
+
+%% ==========================================================
+%% SECTION 2 — LITERATURE SURVEY
+%% ==========================================================
+
+\section{Literature Survey}\label{sec2}
+
+A fair amount of research has gone into warehouse management,
+logistics platforms, and the use of AI in supply chain work.
+Some of it looks at warehouse sharing models, others focus
+on on-demand logistics, and a few recent papers explore how
+large language models can help with planning and decision-making
+in this space \cite{b7, b8}.
+
+That said, most of this work tackles one piece of the puzzle
+at a time.
+One paper might deal with pricing, another with location
+selection, and yet another with automation \cite{b2}.
+Very few have tried to bring all of these together into a single
+recommendation framework that also explains its reasoning
+and has a backup plan when something goes wrong \cite{b3, b4}.
+On top of that, many existing platforms struggle with what is
+called the ``cold-start'' problem, where a newly listed warehouse
+has no booking history, so the system does not know what to do
+with it \cite{b10}.
+We address this through content-based filtering that relies
+on warehouse features rather than past user behavior.
+
+Table~\ref{tab:literature_survey} lists the key studies
+we reviewed, what they contributed, the algorithm each paper
+actually uses, and where they fall short.
+This gap in the literature, the lack of a system that combines
+hybrid ML with explainable LLM reasoning and reliable fallback,
+is what motivated our work.
+
+%%% Literature Survey Table — Algorithm column updated %%%
+
+\begin{table}[h]
+\label{tab:literature_survey}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.25}
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{|c|p{4cm}|p{3cm}|p{4cm}|}
+\hline
+\textbf{Paper Title}
+  & \textbf{Author \& Publication}
+  & \textbf{Algorithm Used}
+  & \textbf{Findings / Limitations} \\
+\hline
+
+Enhanced Modeling for Warehouse Sharing Platform [1]
+  & Z. Xing et al., arXiv (2024)
+  & Adaptive Large Neighbourhood Search (ALNS) Heuristic
+  & Framework for warehouse-sharing platforms;
+    high latency for real-time inference on large datasets. \\
+\hline
+
+Shared Logistics, Literature Review [2]
+  & M. Matusiewicz, D. Ksi\k{a}\.zkiewicz,
+    Applied Sciences (2023)
+  & Systematic Literature Review
+  & Reviews trends and challenges in coordination,
+    trust, and data transparency;
+    limited to structured data. \\
+\hline
+
+LLMs for Simulation-Based Optimization in SCM [3]
+  & T. Wi\'{s}niewski, APEM (2025)
+  & LLM-assisted Simulation Optimization (ChatGPT)
+  & LLMs enhance planning and service;
+    prone to hallucination,
+    lacks domain-specific grounding. \\
+\hline
+
+Decentralized Warehouse Management Using LLMs [4]
+  & T. Berlec et al.,
+    Applied Sciences (2025)
+  & LLM-driven Multi-Agent System
+    (Game Theory, Decision Theory)
+  & Decentralized LLM-based warehouse agents
+    outperform random strategies;
+    conceptual, no integrated recommendation. \\
+\hline
+
+On-Demand Warehousing Platforms [5]
+  & V. Elia et al., Logistics (2024)
+  & Trend Analysis (Systematic Review)
+  & Impact on scalability and operational
+    efficiency analyzed;
+    cannot model non-linear pricing. \\
+\hline
+
+Full Stack Systems Report [6]
+  & Technical Report,
+    React and Supabase
+  & Full Stack Development
+    (React, Supabase, Express.js)
+  & Implementation reference for web-based
+    logistics platforms. \\
+\hline
+
+LLMs for Supply Chain Management [7]
+  & H. Wang et al., arXiv (2025)
+  & RAG Framework,
+    Domain-specialized LLM,
+    Game-theoretic Analysis
+  & Improved forecasting and decisions
+    via LLM analytics;
+    dependency on external APIs,
+    latency concerns. \\
+\hline
+
+Warehousing 5.0 [8]
+  & B. Y. Ekren et al., IJPR (2026)
+  & Conceptual Framework
+    (Warehousing 5.0 Vision)
+  & Future vision for intelligent and adaptive
+    warehouse ecosystems;
+    conceptual, no empirical validation. \\
+\hline
+
+Smart Logistics Warehouse Mgmt.\ System [9]
+  & C. Liang et al., ICJE (2025)
+  & Multi-modal AI
+    (DeepSeek-R1 + GLM-4V)
+  & Multi-modal AI for smart logistics;
+    complex orchestration,
+    system instability during failovers. \\
+\hline
+
+ML in Warehouse Mgmt.\ Survey [10]
+  & R. F. de Assis et al.,
+    Procedia CS (2024)
+  & Systematic Literature Review
+    (ML Methods Survey)
+  & ML for demand forecasting, inventory control,
+    space optimization;
+    gap in combined ML + LLM systems. \\
+\hline
+\end{tabular}
+\begin{center}
+    \textbf{Table 1} Literature Survey
+\end{center}
+\end{table}
+
+%% ==========================================================
+%% SECTION 3 — METHODOLOGY
+%% ==========================================================
+
+\section{Methodology}\label{sec3}
+
+SmartSpace was designed in layers.
+Each layer does its own job, but they all feed into one
+decision-support system.
+We kept structured data processing separate from
+language-based reasoning on purpose, so that if one part
+needs to change, it does not break everything else.
+The system can scale because of this separation,
+and it handles different kinds of data without mixing
+things up \cite{b4, b9}.
+
+Here is how the pipeline works, step by step:
+\begin{itemize}
+    \item \textbf{Data Acquisition:}
+      We collected government-certified warehouse registry
+      data from Indian regulatory authorities
+      \cite{b1, b5}.
+
+    \item \textbf{Data Preprocessing:}
+      The raw data went through cleaning, geospatial
+      gap-filling, and synthetic augmentation so it
+      looks like what you would actually see in the market
+      \cite{b10}.
+
+    \item \textbf{Model Selection and Training:}
+      We implemented a 5-algorithm ML ensemble for
+      numerical scoring and plugged in a Large Language
+      Model for reasoning over text
+      \cite{b3, b7}.
+
+    \item \textbf{Multimodal Fusion:}
+      We combined what users explicitly ask for with what
+      they seem to want based on their conversation, and
+      used both signals to rank warehouses
+      \cite{b9}.
+
+    \item On the architecture side, there is a React-based
+      front end for the user interface.
+      Behind it sits an application layer that handles
+      API routing and authentication.
+      The real work happens in what we call the
+      Intelligence Layer, which has two engines:
+      Meta Llama 3.3 70B for reasoning tasks and a
+      five-model ML ensemble (KNN, RF, GB, NN, and
+      Stacking) for number-based predictions \cite{b4, b10}.
+      Everything is stored in Supabase PostgreSQL with
+      row-level security turned on, and we also pull in
+      external WDRA regulatory data \cite{b6}.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.75\columnwidth]{architecture.jpeg}
+\begin{center}
+    \textbf{Fig. 1} System Architecture of SmartSpace
+\end{center}
+\label{fig:arch}
+\end{figure}
+
+%%% 3.1 Data Acquisition %%%
+
+\subsection{Data Acquisition}\label{subsec:data-acq}
+
+We started with data from the
+\textit{Warehousing Development and Regulatory Authority (WDRA)},
+which is a government body under India's Department of Food
+and Public Distribution.
+This gave us credibility right from the start \cite{b5}.
+\begin{itemize}
+    \item \textbf{Structured Registry Data:}
+      The base dataset has 424 certified warehouse records
+      spread across 33 districts in Maharashtra.
+      Each record includes the warehouse capacity in metric
+      tons, its district, registration validity period,
+      and contact details.
+
+    \item \textbf{Market Context:}
+      Government data alone was not enough.
+      We added market-specific features like pricing
+      (INR per square foot per month) and facility types
+      such as Cold Chain, FMCG, and Industrial.
+      These came from regional logistics reports so the
+      data would reflect actual market conditions
+      \cite{b1}.
+\end{itemize}
+
+%%% 3.2 Data Preprocessing %%%
+
+\subsection{Data Preprocessing}\label{subsec:preproc}
+
+The raw data from WDRA needed a lot of work before we
+could use it for machine learning \cite{b10}.
+\begin{itemize}
+    \item \textbf{Geospatial Imputation:}
+      The original dataset did not have precise latitude
+      and longitude values.
+      We used a centroid-based method, assigning each
+      warehouse the coordinates of its district center
+      and then adding a small random Gaussian offset
+      ($\pm 0.05^\circ$) to spread them out realistically.
+
+    \item \textbf{Data Cleaning:}
+      We used regex-based checks to clean up phone numbers
+      and pincodes.
+      If a warehouse had an expired license, we flagged it
+      and lowered its health score so the recommendation
+      engine would rank it lower.
+\end{itemize}
+
+%%% 3.3 Dataset Description and Preparation %%%
+
+\subsection{Dataset Description and Preparation}%
+\label{subsec:dataset}
+
+424 records is not enough to train a recommendation engine
+that can handle diverse user preferences.
+So we augmented the data programmatically to reach
+\textbf{10,002 records} \cite{b10}.
+\begin{itemize}
+    \item \textbf{Feature Engineering:}
+      We grew the feature set from 12 attributes to 16.
+      The new ones include occupancy rates, quality ratings
+      (a composite of amenities and certifications), and
+      whether the warehouse offers micro-rental spaces.
+
+    \item \textbf{Normalization:}
+      Features like \texttt{total\_area} and
+      \texttt{price\_per\_sqft} were scaled using Min-Max
+      normalization.
+      This was needed so that the KNN algorithm would not
+      give too much weight to features with large numeric
+      ranges.
+
+    \item \textbf{Class Balancing:}
+      We used stratified sampling to make sure all
+      7 warehouse types (Pharma, Agriculture, General,
+      and so on) were represented fairly.
+      Without this step, the model would have been biased
+      toward the most common types.
+\end{itemize}
+
+%%% 3.4 Model Selection and Training %%%
+
+\subsection{Model Selection and Training}\label{subsec:model}
+
+We went with a dual-engine design.
+One engine handles the numbers, the other handles language
+\cite{b3, b10}.
+
+\subsubsection{Structured Recommendation Engine (Ensemble)}%
+\label{subsubsec:ensemble}
+
+For matching warehouses to user preferences based on numbers
+for things like price, area, and location, we built a
+\textbf{5-algorithm ensemble}.
+Each algorithm scores every warehouse independently, and then
+a weighted vote decides the final ranking \cite{b10}.
+\begin{itemize}
+    \item \textbf{K-Nearest Neighbors (KNN):}
+      We picked KNN because it works well for spatial
+      clustering problems.
+      It measures how far each warehouse is from the user's
+      ideal warehouse using a distance formula in feature
+      space.
+
+    \item \textbf{Random Forest:}
+      This was chosen because it handles mixed data types
+      well, especially categorical ones like
+      \texttt{warehouse\_type} and \texttt{amenities}.
+      When we looked at feature importance, location and
+      price together accounted for about 75\% of the
+      decision weight.
+\end{itemize}
+
+\subsubsection{Semantic Reasoning Engine (LLM)}%
+\label{subsubsec:llm}
+
+For understanding what users actually mean when they type
+in natural language, we use \textbf{Meta Llama 3.3 70B}
+as our language model \cite{b3, b7, b8}.
+\begin{itemize}
+    \item \textbf{Intent Parsing:}
+      The LLM pulls out key pieces from what the user types.
+      If someone writes ``Find cold storage in Pune under
+      50k,'' the model extracts the location (Pune),
+      budget (50k), and constraint (cold storage) \cite{b7}.
+
+    \item \textbf{Re-Ranking:}
+      After the ML ensemble returns its top 50 matches,
+      the LLM looks at them again.
+      It re-ranks them based on things the user might care
+      about but did not explicitly say \cite{b4}.
+\end{itemize}
+
+%%% 3.5 Multimodal Fusion %%%
+
+\subsection{Multimodal Fusion}\label{subsec:fusion}
+
+The ML numbers and the LLM reasoning come together in
+what we call the \textbf{Interactive Preference Engine}.
+Users set their hard preferences, like price range and area,
+through form inputs.
+At the same time, they can add softer preferences like
+``Prefer verified facilities'' through conversation.
+These soft preferences adjust the internal weights dynamically.
+The result is a recommendation list that is both
+mathematically sound and contextually relevant
+\cite{b9, b4}.
+
+%% ==========================================================
+%% SECTION 4 — IMPLEMENTATION
+%% ==========================================================
+
+\section{Implementation}\label{sec4}
+
+SmartSpace is a working system, not a prototype on paper.
+It runs as a full-stack web application that handles three
+kinds of users: Seekers who look for warehouses, Owners
+who list them, and Admins who oversee the whole process.
+Everything was built to respond fast enough for real use
+\cite{b6}.
+
+%%% 4.1 Technology Stack %%%
+
+\subsection{Architectural Framework and Technology Stack}%
+\label{subsec:tech}
+
+We split the front end and back end so they can be worked
+on independently.
+\begin{itemize}
+    \item \textbf{Frontend Layer:}
+      The interface is built with \textbf{React 18.3} and
+      \textbf{TypeScript} for type safety.
+      We used \textbf{TanStack Query} to manage server state,
+      which handles caching and keeps the UI in sync with the
+      database.
+      Styling is done with \textbf{TailwindCSS}, and the whole
+      thing is bundled through \textbf{Vite 6.3}, which gives
+      us fast page reloads during development.
+
+    \item \textbf{Backend and Database Layer:}
+      On the server side, we have \textbf{Node.js} running
+      \textbf{Express.js 4.x} for API routing.
+      The database is \textbf{Supabase PostgreSQL}, and we
+      turned on \textbf{Row-Level Security (RLS)} so each user
+      only sees what they are supposed to see.
+      For real-time updates on bookings and inventory, we use
+      Supabase's built-in WebSocket subscriptions \cite{b6}.
+\end{itemize}
+
+%%% 4.2 Functional Modules %%%
+
+\subsection{Functional Module Implementation}%
+\label{subsec:modules}
+
+The application has three main modules, each aimed at
+a different type of user.
+
+\subsubsection{Seeker Module (Discovery and Transaction)}%
+\label{subsubsec:seeker}
+
+This is what most users interact with.
+It has two AI subsystems plus a manual search option:
+\begin{itemize}
+    \item \textbf{Interactive ML Recommendation Engine:}
+      The user fills in what they want, things like target
+      price and minimum area, and the system builds a query
+      vector for the KNN algorithm from those inputs
+      \cite{b10}.
+
+    \item \textbf{Smart Booking Assistant:}
+      This uses a four-step NLP pipeline.
+      The LLM reads unstructured text like ``I need 400 sq ft
+      in Thane,'' pulls out the relevant details, and turns
+      them into a search query the system can act on
+      \cite{b3, b7}.
+
+    \item \textbf{Parametric Discovery Engine:}
+      For users who prefer structured search, this mode runs
+      SQL queries directly against warehouse attributes like
+      type, location, and amenities.
+\end{itemize}
+
+\subsubsection{Owner Module (Asset Management)}%
+\label{subsubsec:owner}
+
+Warehouse owners use this module to manage their listings:
+\begin{itemize}
+    \item \textbf{Dynamic Pricing Inference:}
+      A pre-trained regression model suggests a
+      price-per-square-foot range based on current market
+      data from MIDC regions.
+      Owners can accept or adjust \cite{b5}.
+
+    \item \textbf{Inventory Dashboard:}
+      Built with \textbf{Recharts}, it shows occupancy rates
+      and revenue numbers.
+      Notifications come in real time when bookings change.
+\end{itemize}
+
+\subsubsection{Admin Module (Governance)}%
+\label{subsubsec:admin}
+
+Admins approve or reject warehouse submissions and manage
+user roles.
+Role-Based Access Control (RBAC) keeps Owners and Seekers
+separated in terms of what they can do on the platform
+\cite{b6}.
+
+%%% 4.3 Hybrid AI Engine %%%
+
+\subsection{Hybrid AI Engine: ML Ensemble}%
+\label{subsec:hybrid}
+
+This is where the real intelligence sits.
+Two engines work in parallel: a 5-model ML ensemble for
+scoring and a language model for reasoning
+\cite{b10, b3}.
+
+\subsubsection{The 5-Algorithm ML Ensemble}%
+\label{subsubsec:ml5}
+
+All five algorithms run at the same time, and each one
+produces a relevance score $S_i \in [0, 1]$ for every
+warehouse-query pair.
+The input is an 8-dimensional feature vector: location match,
+price fitness, area adequacy, warehouse type, verification
+status, availability, user rating, and amenity density.
+
+\textbf{K-Nearest Neighbors (K=8).}
+KNN computes a weighted Euclidean distance between the
+warehouse feature vector
+$\mathbf{x} = (x_1, x_2, \ldots, x_n)$
+and the user's ideal vector
+$\mathbf{x}^* = (x_1^*, x_2^*, \ldots, x_n^*)$:
+
+\begin{equation}
+d(\mathbf{x}, \mathbf{x}^*)
+  = \frac{%
+      \sqrt{\sum_{i=1}^{n} w_i \left(x_i - x_i^*\right)^2}%
+    }{%
+      \sqrt{\sum_{i=1}^{n} w_i}%
+    }
+\label{eq:knn}
+\end{equation}
+
+\noindent
+Here, $w_i$ is the weight for each feature
+(location: 0.30, price: 0.25, area: 0.20, type: 0.10,
+verification: 0.05, availability: 0.05, rating: 0.03,
+amenities: 0.02), and $n = 8$.
+The similarity score is just
+$S_{\text{KNN}} = 1 - d(\mathbf{x}, \mathbf{x}^*)$.
+
+\textbf{Random Forest (50 Trees).}
+Each of the 50 decision trees trains on a bootstrap sample
+covering 80\% of the candidates, and each split picks from
+$\lfloor\sqrt{n}\rfloor$ randomly chosen features.
+
+\textbf{Gradient Boosting (10 Iterations).}
+Trees are added one after another, each one correcting what
+the previous ones got wrong.
+The learning rate is $\eta = 0.1$:
+$F_m(\mathbf{x}) = F_{m-1}(\mathbf{x})
+  + \eta \cdot h_m(\mathbf{x})$.
+
+\textbf{Neural Network
+(10$\rightarrow$10$\rightarrow$4$\rightarrow$1).}
+A four-layer feedforward network.
+The hidden layers use LeakyReLU ($\alpha = 0.01$) and the
+output layer uses sigmoid to squeeze the result between 0
+and 1.
+
+\textbf{Hybrid Stacking.}
+A meta-learner that takes the KNN and Random Forest outputs
+and combines them for a more stable prediction.
+
+The ensemble score is a weighted average of all five:
+\begin{equation}
+E(w) = \sum_{j=1}^{5} \alpha_j \cdot S_j(w)
+\label{eq:ensemble}
+\end{equation}
+
+\noindent
+The weights are
+$\alpha_{\text{KNN}} = 0.25$,
+$\alpha_{\text{RF}} = 0.25$,
+$\alpha_{\text{GB}} = 0.20$,
+$\alpha_{\text{NN}} = 0.15$,
+$\alpha_{\text{Stack}} = 0.15$.
+We found these through grid search on the WDRA dataset.
+To make the score easier for users to understand, we map it
+to a percentage:
+\begin{equation}
+F_{\text{final}}(w) = 0.50 + \left(E(w) \times 0.50\right)
+\label{eq:final}
+\end{equation}
+
+\noindent
+So every recommendation score lands between 50\% and 100\%.
+We also compute confidence as:
+$C = \max(0.5,\; 1 - 2\sqrt{\sigma^2(\{S_1, \ldots, S_5\})})$.
+
+%%% 4.3.2 LLM Integration %%%
+
+\subsubsection{LLM Integration and Scoring}%
+\label{subsubsec:llm-integration}
+
+The language model in our system is
+\textbf{Meta Llama 3.3 70B}, which has 70 billion parameters.
+We run it with structured JSON output enforcement,
+a temperature of 0.3, and a maximum of 4,096 tokens per
+response.
+The model is given a system prompt that tells it to score
+each warehouse according to this formula \cite{b3, b7}:
+\begin{equation}
+S_{\text{LLM}}(w) = 0.30L + 0.25P + 0.25Z + 0.20Q
+\label{eq:llm}
+\end{equation}
+
+\noindent
+$L$ means location relevance, $P$ is price competitiveness,
+$Z$ is size adequacy, and $Q$ is overall quality.
+Each one is scored between 0 and 1.
+
+We chose to use only one LLM rather than chaining multiple
+models.
+Meta Llama 3.3 70B handles all language tasks in SmartSpace.
+If the model becomes unavailable, due to network issues or
+downtime, the system automatically switches to the local
+ML ensemble.
+This way, recommendations keep coming without any dependence
+on external language model services \cite{b7, b4}.
+
+%%% 4.3.3 Document Verification %%%
+
+\subsubsection{Document Verification System}%
+\label{subsubsec:docverify}
+
+When warehouse owners submit documents, the system scores
+them automatically:
+\begin{equation}
+V = 25G + 25P + 15T + 20D + 15C
+\label{eq:verify}
+\end{equation}
+
+\noindent
+$G$ is the GST score, $P$ is PAN verification,
+$T$ is phone validation, $D$ is document quality,
+and $C$ is completeness.
+All are normalized between 0 and 1.
+Based on the total, the decision is:
+$V \geq 80$ means auto-approve,
+$60 \leq V < 80$ means send for review,
+$40 \leq V < 60$ means caution,
+and $V < 40$ means reject.
+
+%%% 4.4 Comparative Analysis %%%
+
+\subsection{Comparative Analysis: LLM vs ML Ensemble}%
+\label{subsec:compare}
+
+We compared the two engines across ten different criteria
+to understand where each one does better
+\cite{b3, b10}.
+
+\subsubsection{Feature-wise Performance}%
+\label{subsubsec:featperf}
+
+Fig.~\ref{fig:feat} shows how each engine performs on six
+core platform features.
+The ML ensemble does better on tasks where the data is
+structured, for example it scores 91\% on recommendation
+accuracy and 86\% on search relevance.
+The LLM, on the other hand, is stronger at tasks that need
+language understanding: it hits 92\% on natural language
+booking, 90\% on pricing analysis, and 88\% on document
+verification \cite{b7}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\columnwidth]{Fig1_Feature_ML_vs_LLM_Paper.jpeg}
+\begin{center}
+    \textbf{Fig. 2} Feature-wise performance comparison between ML and LLM.
+\end{center}
+\label{fig:feat}
+\end{figure}
+
+\subsubsection{Multi-Criteria Evaluation}%
+\label{subsubsec:multicrit}
+
+Table~\ref{tab:mlvsllm} gives the full breakdown.
+Out of 10 criteria, the LLM scores higher on 8 of them,
+with an average of 83.0 compared to 56.6 for the ML ensemble.
+But the ML side wins on speed (45 ms versus 850 ms) and cost
+(no API fees at all) \cite{b4, b3}.
+
+\begin{table}[h]
+\centering
+\label{tab:mlvsllm}
+\large
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Criterion} & \textbf{ML} & \textbf{LLM} \\
+\hline
+Accuracy (\%)        & 91.0 & 88.0 \\
+Speed (ms)           & 45   & 850  \\
+Scalability          & 75   & 90   \\
+NL Understanding     & 15   & 95   \\
+Context Awareness    & 20   & 92   \\
+Adaptability         & 35   & 88   \\
+Maintenance Effort   & 80   & 70   \\
+Cost Efficiency      & 95   & 60   \\
+Explainability       & 85   & 72   \\
+Multi-task           & 25   & 85   \\
+\hline
+\textbf{Average}     & \textbf{56.6} & \textbf{83.0} \\
+\hline
+\end{tabular}
+\begin{center}
+    \textbf{Table 2.} Multi-Criteria Performance Comparison Between ML and LLM.
+\end{center}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\columnwidth]{Fig2_Radar_Comparison1.png}
+\begin{center}
+    \textbf{Fig 3.} Multi-criteria radar comparison across 10 performance dimensions.
+LLM achieves 83.0/100 average and ML achieves 56.6/100.
+\end{center}
+\label{fig:radar}
+\end{figure}
+
+%%% 4.5 Model Selection %%%
+
+\subsection{Model Selection: Why Meta Llama 3.3 70B}%
+\label{subsec:modelselect}
+
+We did not just pick a language model at random.
+We compared Llama 3.3 70B against GPT-4o, Claude 3.5,
+Gemini 1.5, and Mistral 7B across six practical parameters.
+Table~\ref{tab:models} shows the numbers \cite{b3, b7}.
+
+\begin{table}[h]
+\centering
+\label{tab:llm-compare}
+\renewcommand{\arraystretch}{1.15}
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Param.} & \textbf{Llama 3.3} & \textbf{GPT 4o} & \textbf{Claude 3.5} & \textbf{Gemini 1.5} & \textbf{Mistral 7B} \\
+\hline
+Params (B)      & 70   & 200  & 175  & MoE  & 7   \\
+Quality (\%)    & 93   & 96   & 94   & 91   & 78  \\
+Speed (t/s)     & 800  & 150  & 180  & 200  & 600 \\
+JSON (\%)       & 98   & 95   & 93   & 90   & 82  \\
+Avail. (\%)     & 99   & 99.9 & 99.5 & 99   & 95  \\
+Latency (ms)    & 850  & 2200 & 1800 & 1500 & 950 \\
+Cost/1M tok     & Free & \$5  & \$3  & \$1.25 & Free \\
+\hline
+\end{tabular}
+\begin{center}
+    \textbf{Table 3.} LLM Model Comparison Across Operational Parameters.
+\end{center}
+\end{table}
+
+Three things made Llama 3.3 70B the clear winner for our
+use case:
+\begin{itemize}
+    \item \textbf{Inference Speed:}
+      On dedicated inference hardware, Llama runs at about
+      800 tokens per second.
+      That is 4 to 5 times faster than GPT-4o at 150 tokens
+      per second.
+      Since our pipeline makes four back-to-back LLM calls,
+      this drops the total wait time from 2,200 ms to about
+      850 ms, which is a 61\% reduction.
+
+    \item \textbf{JSON Reliability:}
+      When we tell the model to return structured JSON,
+      it complies 98\% of the time.
+      That is the highest among all the models we tested,
+      and it matters a lot because our system parses JSON
+      responses programmatically.
+
+    \item \textbf{Cost at Scale:}
+      With a free inference tier that supports roughly
+      14,400 requests per day, we pay nothing for LLM calls.
+      GPT-4o would cost about \$2,740 per year for the same
+      volume \cite{b3}.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.95\columnwidth]{Fig3_Why_Llama_Model_Comparison.jpeg}
+\begin{center}
+    \textbf{Fig 4.} Six-panel comparison of Meta Llama 3.3 70B against competing LLMs.
+\end{center}
+\label{fig:model}
+\end{figure}
+
+%%% 4.5.1 Failover %%%
+
+\subsubsection{Failover and Reliability}%
+\label{subsubsec:failover}
+
+If the LLM becomes unavailable, whether from a network issue,
+a timeout, or any other reason, the system does not go down.
+It switches to the local 5-algorithm ML ensemble, which runs
+entirely on the server with zero external dependencies.
+Since the LLM has a measured uptime of about 99\% and the
+local ML fallback is always on, the combined availability
+works out to \cite{b4, b7}:
+\begin{equation}
+A_{\text{sys}}
+  = 1 - (1 - A_{\text{LLM}})(1 - A_{\text{ML}})
+  = 1 - (0.01)(0)
+  = 1.0
+\label{eq:avail}
+\end{equation}
+
+\noindent
+The ML ensemble never goes down because it does not depend
+on anything outside the server.
+So in practice, SmartSpace always has a working recommendation
+engine, regardless of what happens to the language model.
+
+%%% 4.6 Performance Evaluation %%%
+
+\subsection{Performance Evaluation and Results}%
+\label{subsec:perf}
+
+We tested the system on the full dataset of
+\textbf{10,002 warehouse records} from Maharashtra.
+\begin{itemize}
+    \item \textbf{Predictive Accuracy:}
+      The ML ensemble got a \textbf{mean accuracy of 87.9\%}
+      on the test set.
+      The \textbf{Precision@10} score was \textbf{0.83},
+      which means 8 or 9 out of every top-10 recommendations
+      were actually relevant to what the user wanted
+      \cite{b1, b10}.
+
+    \item \textbf{Conversational Reliability:}
+      Under stress testing, the system handled
+      \textbf{96.8\%} of natural language queries
+      successfully.
+      When we simulated LLM outages, the fallback kept
+      response times under 3 seconds
+      \cite{b8, b9}.
+
+    \item \textbf{Operational Efficiency:}
+      Compared to the old manual approach, SmartSpace
+      cut the total search time by about \textbf{60\%}.
+      For SMEs and logistics managers who run these
+      searches regularly, that is a significant time
+      savings \cite{b5, b2}.
+\end{itemize}
+
+%% ==========================================================
+%% SECTION 5 — CONCLUSION
+%% ==========================================================
+
+\section{Conclusion}\label{sec5}
+
+We built and tested SmartSpace, a hybrid ML and LLM-assisted
+recommendation platform for warehouses in Maharashtra.
+The system works.
+Recommendation accuracy went up, search times went down,
+and users said the explanations helped them trust the
+suggestions.
+Compared to the old way of searching through listings
+manually, this is a clear step forward
+\cite{b2, b5, b8}.
+
+The hybrid approach, with KNN and Random Forest feeding into
+a meta-learner, gives us stable rankings that do not flip
+around when user preferences change slightly \cite{b10}.
+The language model adds a layer of reasoning that pure ML
+cannot provide, especially when users describe what they
+want in everyday language \cite{b3, b7}.
+And the fallback mechanism means the system never goes
+offline, even if the LLM has issues \cite{b4}.
+
+There are things we want to improve.
+We plan to add online learning so the system adjusts its
+weights based on actual user behavior over time.
+Better data quality checks are on the list too.
+We also want to build a proper benchmarking framework to
+measure things more rigorously.
+Eventually, we would like to expand beyond Maharashtra,
+bring in real-time market data, and add predictive capacity
+planning so warehouse operators can plan ahead instead of
+reacting to demand after it hits \cite{b1, b8}.
+
+%% ==========================================================
+%% ACKNOWLEDGMENT
+%% ==========================================================
+
+\section*{Acknowledgment}
+
+We would like to thank the Department of Computer Engineering
+at A.P. Shah Institute of Technology, Thane, for providing
+the lab facilities and academic guidance we needed for this
+project.
+We are also grateful to the open-source communities and tool
+providers whose frameworks and libraries made it possible
+to build and test SmartSpace.
+
+%% ==========================================================
+%% REFERENCES — Author names corrected per actual paper PDFs
+%% ==========================================================
+
+\begin{thebibliography}{10}
+
+\bibitem{b1}
+Z. Xing, Y. Wu, and S. Yu,
+``An Enhanced Modelling Approach for Warehouse Sharing Platform
+System Designing Problem,''
+\textit{arXiv preprint arXiv:2401.15389},
+2024.
+
+\bibitem{b2}
+M. Matusiewicz and D. Ksi\k{a}\.zkiewicz,
+``Shared Logistics---Literature Review,''
+\textit{Applied Sciences},
+vol.~13, no.~4, p.~2352,
+2023.
+
+\bibitem{b3}
+T. Wi\'{s}niewski,
+``Using large language models (LLMs) to support
+simulation-based optimization in supply chain management,''
+\textit{Advances in Production Engineering and Management},
+vol.~20, no.~4, pp.~491--506,
+2025.
+
+\bibitem{b4}
+T. Berlec, M. Corn, S. Varljen, and P. Podr\v{z}aj,
+``Exploring Decentralized Warehouse Management Using
+Large Language Models: A Proof of Concept,''
+\textit{Applied Sciences},
+vol.~15, no.~10, p.~5734,
+2025.
+
+\bibitem{b5}
+V. Elia, M. G. Gnoni, and F. Tornese,
+``On-Demand Warehousing Platforms: Evolution and Trend Analysis
+of an Industrial Sharing Economy Model,''
+\textit{Logistics},
+vol.~8, no.~4, p.~93,
+2024.
+
+\bibitem{b6}
+Technical Report,
+``Full Stack Systems using React and Supabase,''
+2024.
+
+\bibitem{b7}
+H. Wang, J. Jiang, L. J. Hong, and G. Jiang,
+``LLMs for Supply Chain Management,''
+\textit{arXiv preprint arXiv:2505.18597},
+2025.
+
+\bibitem{b8}
+B. Y. Ekren, U. Venkatadri, F. Sgarbossa,
+and E. H. Grosse,
+``Warehousing 5.0 for the future of the logistics industry,''
+\textit{International Journal of Production Research},
+vol.~64, no.~5,
+2026.
+
+\bibitem{b9}
+C. Liang, L. Sun, S. Luo, X. Liu, and R. Wu,
+``Architecture Design of a Smart Logistics Warehouse
+Management System based on Multi-modal AI,''
+\textit{International Core Journal of Engineering},
+vol.~11, no.~5,
+2025.
+
+\bibitem{b10}
+R. F. de Assis, A. F. Faria,
+V. Thomasset-Laperri\`{e}re,
+L. A. Santa-Eulalia, M. Ouhimmou,
+and W. de~Paula Ferreira,
+``Machine Learning in Warehouse Management: A Survey,''
+\textit{Procedia Computer Science},
+vol.~232, pp.~2790--2799,
+2024.
+
+\end{thebibliography}
+
+\end{document}

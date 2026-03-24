@@ -74,8 +74,6 @@ export default defineConfig(({ mode }) => ({
       "@radix-ui/react-tooltip",
       "@radix-ui/react-dropdown-menu",
       "@radix-ui/react-popover",
-      "@react-three/fiber",
-      "@react-three/drei",
     ],
     holdUntilCrawlEnd: true,
   },

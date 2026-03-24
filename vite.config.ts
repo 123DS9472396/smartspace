@@ -6,12 +6,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  // Keep Vite cache outside OneDrive-managed workspace to avoid Windows EPERM
-  // lock errors when Vite rewrites dependency bundles.
-  cacheDir: path.join(
-    process.env.LOCALAPPDATA || process.cwd(),
-    "warehouse_2026_vite_cache",
-  ),
+  cacheDir: "node_modules/.vite",
   server: {
     host: "::",
     port: 8080,

@@ -16,7 +16,7 @@ import {
   getOwnerSubmissions,
   uploadFile as uploadWarehouseSubmissionFile,
 } from "./routes/warehouse-submissions";
-import { getOwnerAnalytics } from "./routes/analytics";
+import { getOwnerAnalytics, getAdminAnalytics, getWarehouseList, getWarehouseDetail, getAnalyticsFilters, getDashboardStats } from "./routes/analytics";
 
 // Create Supabase client directly to avoid module resolution issues
 const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://bsrzqffxgvdebyofmhzg.supabase.co';
@@ -344,8 +344,13 @@ export function createServer() {
   app.get("/api/owner/bookings", getOwnerBookings);
   app.post("/api/owner/bookings/respond", respondToBooking);
 
-  // Owner analytics route
+  // Analytics routes
+  app.get("/api/analytics/admin", getAdminAnalytics);
   app.get("/api/analytics/owner/:ownerId", getOwnerAnalytics);
+  app.get("/api/analytics/warehouses", getWarehouseList);
+  app.get("/api/analytics/warehouse/:id", getWarehouseDetail);
+  app.get("/api/analytics/filters", getAnalyticsFilters);
+  app.get("/api/admin/dashboard-stats", getDashboardStats);
 
   // Owner warehouse submission routes
   app.post("/api/warehouse-submissions", createWarehouseSubmission);

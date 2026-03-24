@@ -30,12 +30,19 @@ export default defineConfig(({ mode }) => ({
       "@shared": path.resolve(__dirname, "./shared"),
       "react": path.resolve(__dirname, "./node_modules/react"),
       "react-dom": path.resolve(__dirname, "./node_modules/react-dom"),
+      "react/jsx-runtime": path.resolve(__dirname, "./node_modules/react/jsx-runtime"),
+      "react/jsx-dev-runtime": path.resolve(__dirname, "./node_modules/react/jsx-dev-runtime"),
     },
-    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
+    dedupe: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "react-is",
+      "scheduler",
+    ],
   },
   optimizeDeps: {
-    // Pre-scan the app source so Vite bundles dependencies once at startup
-    // instead of discovering more later and forcing a reload.
     entries: [
       "index.html",
       "client/main.tsx",
@@ -47,12 +54,20 @@ export default defineConfig(({ mode }) => ({
     ],
     include: [
       "react",
+      "react-dom",
       "react-dom/client",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "react-is",
+      "scheduler",
       "react-router-dom",
+      "react-router",
       "@tanstack/react-query",
       "@supabase/supabase-js",
       "lucide-react",
       "recharts",
+      "react-smooth",
+      "framer-motion",
       "tesseract.js",
       "pdfjs-dist",
       "@tensorflow-models/mobilenet",
@@ -75,8 +90,19 @@ export default defineConfig(({ mode }) => ({
       "@radix-ui/react-tooltip",
       "@radix-ui/react-dropdown-menu",
       "@radix-ui/react-popover",
+      "sonner",
+      "vaul",
+      "cmdk",
+      "embla-carousel-react",
+      "react-day-picker",
+      "react-hook-form",
+      "react-resizable-panels",
     ],
+    force: true,
     holdUntilCrawlEnd: true,
+  },
+  esbuild: {
+    jsx: "automatic",
   },
 }));
 

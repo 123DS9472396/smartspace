@@ -10,8 +10,12 @@
       "dist/server/**/*.js"
     ]
   },
+  "overrides": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
   "scripts": {
-    "dev": "vite --force",
+    "dev": "vite",
     "dev:server": "tsx server/dev-server.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",

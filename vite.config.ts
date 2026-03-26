@@ -1,10 +1,7 @@
 import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
-// Defer Express server import to runtime inside configureServer to avoid
-// resolution/bundling of server tree during Vite config evaluation.
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   cacheDir: "node_modules/.vite",
   server: {
@@ -44,15 +41,6 @@ export default defineConfig(({ mode }) => ({
     ],
   },
   optimizeDeps: {
-    entries: [
-      "index.html",
-      "client/main.tsx",
-      "client/App.tsx",
-      "client/components/**/*.tsx",
-      "client/contexts/**/*.tsx",
-      "client/pages/**/*.tsx",
-      "client/services/**/*.ts",
-    ],
     include: [
       "react",
       "react-dom",
@@ -105,11 +93,10 @@ export default defineConfig(({ mode }) => ({
 function expressPlugin(): Plugin {
   return {
     name: "express-plugin",
-    apply: "serve", // Only apply during development (serve mode)
+    apply: "serve",
     async configureServer(server) {
       const mod = await import("./server/index.ts");
       const app = mod.createServer();
-      // Add Express app as middleware to Vite dev server
       server.middlewares.use(app);
     },
   };

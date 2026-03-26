@@ -6,7 +6,7 @@ import path from "path";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  cacheDir: "node_modules/.vite",
+  cacheDir: "node_modules/.vite_cache",
   server: {
     host: "::",
     port: 8080,
@@ -98,7 +98,7 @@ export default defineConfig(({ mode }) => ({
     force: true,
   },
   esbuild: {
-    jsx: "automatic",
+    jsxInject: undefined,
   },
 }));
 

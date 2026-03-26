@@ -17,6 +17,13 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: "dist/spa",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react/jsx-runtime"],
+        },
+      },
+    },
   },
   plugins: [react(), expressPlugin()],
   resolve: {
@@ -34,7 +41,6 @@ export default defineConfig(({ mode }) => ({
       "react/jsx-runtime",
       "react/jsx-dev-runtime",
       "react-is",
-      "scheduler",
     ],
   },
   optimizeDeps: {
@@ -54,7 +60,6 @@ export default defineConfig(({ mode }) => ({
       "react/jsx-runtime",
       "react/jsx-dev-runtime",
       "react-is",
-      "scheduler",
       "react-router-dom",
       "react-router",
       "@tanstack/react-query",
@@ -63,9 +68,6 @@ export default defineConfig(({ mode }) => ({
       "recharts",
       "react-smooth",
       "framer-motion",
-      "tesseract.js",
-      "pdfjs-dist",
-      "@tensorflow-models/mobilenet",
       "clsx",
       "tailwind-merge",
       "class-variance-authority",
@@ -94,7 +96,6 @@ export default defineConfig(({ mode }) => ({
       "react-resizable-panels",
     ],
     force: true,
-    holdUntilCrawlEnd: true,
   },
   esbuild: {
     jsx: "automatic",

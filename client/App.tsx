@@ -3,19 +3,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { AuthProvider } from "./contexts/AuthContext";
 import { WarehouseProvider } from "./contexts/WarehouseContext";
-// import { ThemeProvider } from "./contexts/ThemeContext"; // DISABLED - causes React hook errors
+import { ThemeProvider } from "./contexts/ThemeContext";
 import { Toaster } from "./components/ui/toaster";
-// import ProfessionalTheme from "./components/ProfessionalTheme"; // DISABLED - not needed with manual theme
 import { GeminiChatbot } from "./components/GeminiChatbot";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { Navbar } from "./components/Navbar";
-
-console.log('🚀 APP VERSION 7.2 - PROFESSIONAL THEME RESTORED');
-console.log('✅ ML Recommendations require login');
-console.log('✅ Protected routes with role-based access');
-console.log('✅ Password security via Supabase Auth');
-console.log('✅ Enhanced security with RLS and audit logs');
-console.log('Hard refresh: Ctrl+Shift+R');
 
 import Placeholder from "./pages/Placeholder";
 import Index from "./pages/Index";
@@ -57,26 +48,10 @@ const queryClient = new QueryClient();
 const App = () => (
   <Router>
     <QueryClientProvider client={queryClient}>
-      {/* TEMPORARY FIX: ThemeProvider disabled due to React bundling conflict - UI styles maintained manually */}
-      {/* <ThemeProvider> */}
-      {/* <ProfessionalTheme /> */}
+      <ThemeProvider>
       <AuthProvider>
         <WarehouseProvider>
-          {/* Manually applying professional theme classes - EXACT MATCH to enhanced-ui.css */}
-          {/* Using inline styles to guarantee precedence over Tailwind defaults */}
-          <div className="min-h-screen dark relative selection:bg-blue-500/30 font-sans antialiased text-slate-50"
-            style={{ background: 'linear-gradient(135deg, #0c1222 0%, #153366 100%)' }}>
-
-            {/* Background pattern layer (Mesh effect) */}
-            <div className="fixed inset-0 z-0 pointer-events-none opacity-40"
-              style={{
-                backgroundImage: `
-                     radial-gradient(at 21% 33%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
-                     radial-gradient(at 79% 76%, rgba(139, 92, 246, 0.15) 0px, transparent 50%)
-                   `
-              }}
-            />
-
+          <div className="min-h-screen relative selection:bg-blue-500/30 font-sans antialiased">
             <div className="relative z-10">
               <Routes>
                 {/* Public routes */}
@@ -244,6 +219,7 @@ const App = () => (
           </div>
         </WarehouseProvider>
       </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   </Router>
 );

@@ -1,9 +1,5 @@
 import { RequestHandler } from "express";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "https://bsrzqffxgvdebyofmhzg.supabase.co";
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
-const supabase = createClient(supabaseUrl, serviceRoleKey);
+import { supabase } from '../lib/supabaseClient';
 
 /**
  * Safely convert a JSONB value (array or object) to a plain string array
@@ -66,7 +62,6 @@ const buildWarehousePayload = (submission: any) => {
 export const getWarehouseSubmissions: RequestHandler = async (_req, res) => {
   try {
     console.log('📦 Admin: Fetching warehouse submissions...');
-    console.log('  Using service role key:', serviceRoleKey ? `${serviceRoleKey.substring(0, 20)}...` : 'MISSING!');
 
     const { data, error } = await supabase
       .from('warehouse_submissions')

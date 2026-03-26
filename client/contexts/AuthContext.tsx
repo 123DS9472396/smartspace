@@ -118,27 +118,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('🔄 AuthContext: Auth state changed:', event);
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          try {
-            await Promise.race([
-              loadUserProfile(session.user.id),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Profile load timeout')), 5000)
-              )
-            ]);
-          } catch (profileError) {
-            console.error('⚠️ Profile load failed or timed out:', profileError);
-          }
+          const userId = session.user.id;
+          setTimeout(() => {
+            loadUserProfile(userId).catch(() => {}).finally(() => setLoading(false));
+          }, 0);
         } else {
           setProfile(null);
+          setLoading(false);
         }
-
-        setLoading(false);
       }
     );
 
@@ -152,16 +144,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .maybeSingle();
 
       if (error) {
-        console.error('❌ Error loading user profile:', error);
+        console.error('Error loading user profile:', error);
         return;
       }
 
       if (!data) {
-        console.warn('⚠️ Profile not found in DB. Creating from auth metadata...');
         const { data: authData } = await supabase.auth.getUser();
         const authUser = authData.user;
         if (!authUser) {
@@ -171,7 +162,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         const { error: insertError } = await supabase
           .from('profiles')
           .insert({
-            id: authUser.id,
+            user_id: authUser.id,
             email: authUser.email ?? '',
             name: (authUser.user_metadata?.name as string) || '',
             phone: (authUser.user_metadata?.phone as string) || null,
@@ -182,14 +173,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           });
 
         if (insertError) {
-          console.error('❌ Error creating profile from auth metadata:', insertError);
+          console.error('Error creating profile from auth metadata:', insertError);
           return;
         }
 
         const { data: refreshedProfile, error: refreshError } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', userId)
+          .eq('user_id', userId)
           .maybeSingle();
 
         if (refreshError) {
@@ -348,7 +339,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           ...updates,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id);
+        .eq('user_id', user.id);
 
       if (error) {
         return { error };

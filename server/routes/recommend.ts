@@ -1,31 +1,11 @@
 import type { Request, Response } from "express";
 import type { RecommendationRequest, RecommendationResponse } from "../../shared/api";
 import { recommendWarehouses } from "../../shared/recommendation";
-import { createClient } from '@supabase/supabase-js';
 import { hybridRecommend, advancedEnsembleRecommend, mapToRecommendedWarehouse } from "../../shared/ml-algorithms";
 import { geminiRecommend, mapGeminiToRecommendedWarehouse } from "../../shared/gemini-ai";
 import { getLLMRecommendations, mapLLMToRecommendations } from "../../shared/advanced-llm-service";
 import { advancedMLRecommend } from "../../shared/advanced-ml-algorithms";
-
-// Use environment variables for Supabase credentials (server-side prefers service role)
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://bsrzqffxgvdebyofmhzg.supabase.co';
-// Prefer the service role key on the server where available. Fall back to anon key but log a warning.
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE || process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzcnpxZmZ4Z3ZkZWJ5b2ZtaHpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNjEzNDcsImV4cCI6MjA3MjYzNzM0N30.VyCEg70kLhTV2l8ZyG9CfPb00FBdVrlVBcBUhyI88Z8';
-
-// Direct client creation for server-side usage with Node.js global fetch
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-  },
-  global: {
-    fetch: fetch.bind(globalThis), // Use Node.js 18+ native fetch
-  },
-});
-
-if (!process.env.SUPABASE_SERVICE_ROLE) {
-  console.warn('Warning: SUPABASE_SERVICE_ROLE is not set in the server environment. Falling back to anon key which may have limited permissions. For approve-submission and other server-side operations, set SUPABASE_SERVICE_ROLE.');
-}
+import { supabase } from '../lib/supabaseClient';
 
 /**
  * Enhanced recommendation handler with multi-algorithm approach

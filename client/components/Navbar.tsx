@@ -10,15 +10,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 export function Navbar() {
   const { pathname } = useLocation();
   const { user, profile, signOut } = useAuth();
-  // TEMPORARY: Handle missing ThemeProvider gracefully
-  let isProfessional = false;
-  try {
-    const theme = useTheme();
-    isProfessional = theme.isProfessional;
-  } catch {
-    // ThemeProvider disabled - use default
-    isProfessional = true; // Default to professional look
-  }
+  const { isProfessional } = useTheme();
 
   // Get user role from profile
   const userRole = profile?.user_type || '';

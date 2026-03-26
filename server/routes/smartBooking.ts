@@ -1,14 +1,9 @@
-﻿import { Router, RequestHandler } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import { Router, RequestHandler } from 'express';
+import { supabase } from '../lib/supabaseClient';
 
 const router = Router();
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
-
-const supabaseServiceRole = createClient(
-  process.env.VITE_SUPABASE_URL || 'https://bsrzqffxgvdebyofmhzg.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE || ''
-);
 
 console.log('🔧 SmartBooking Route loaded - Groq AI + pattern fallback | Key:', GROQ_API_KEY ? GROQ_API_KEY.substring(0, 12) + '...' : 'missing');
 
@@ -191,7 +186,7 @@ Return JSON:
     }
 
     // Step 2: Query database
-    let dbQuery = supabaseServiceRole.from('warehouses').select('*').eq('status', 'active');
+    let dbQuery = supabase.from('warehouses').select('*').eq('status', 'active');
     if (requirements.location) {
       const baseCity = requirements.location.split(' ')[0];
       dbQuery = dbQuery.or(
@@ -207,7 +202,7 @@ Return JSON:
     }
     if ((!warehouses || warehouses.length === 0) && requirements.location) {
       console.log('No location match, fetching all active warehouses');
-      const { data: all } = await supabaseServiceRole.from('warehouses').select('*').eq('status', 'active').limit(50);
+      const { data: all } = await supabase.from('warehouses').select('*').eq('status', 'active').limit(50);
       warehouses = all || [];
     }
 

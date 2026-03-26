@@ -1,34 +1,11 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Navbar } from '@/components/Navbar';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  Users,
-  Search,
-  Building2,
-  Package,
-  Mail,
-  Phone,
-  Calendar,
-  Shield,
-  ArrowLeft,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  User,
-  Warehouse,
-  IndianRupee,
-  Hash,
-  MapPin,
-  Loader2,
-  TrendingUp,
-  Eye,
-  ChevronDown,
-  ChevronUp
-} from 'lucide-react';
+import { Users, Search, Building2, Package, Mail, Phone, Calendar, Shield, ArrowLeft, RefreshCw, CircleCheck as CheckCircle, Circle as XCircle, User, Warehouse, IndianRupee, Hash, MapPin, Loader as Loader2, TrendingUp, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface UserBooking {
   booking_id: string;
@@ -382,7 +359,7 @@ export default function AdminUsersPage() {
                 ) : (
                   <div className="space-y-3">
                     {filteredSeekers.map((seeker, i) => (
-                      <Card key={seeker.id || i} className="bg-gray-800/70 border-gray-700 hover:border-gray-500 transition-all overflow-hidden">
+                      <Card key={`seeker-${seeker.id}-${i}`} className="bg-gray-800/70 border-gray-700 hover:border-gray-500 transition-all overflow-hidden">
                         <CardContent className="p-5">
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 
@@ -510,7 +487,7 @@ export default function AdminUsersPage() {
                 ) : (
                   <div className="space-y-3">
                     {filteredOwners.map((owner, i) => (
-                      <Card key={owner.id || i} className="bg-gray-800/70 border-gray-700 hover:border-gray-500 transition-all overflow-hidden">
+                      <Card key={`owner-${owner.id}-${i}`} className="bg-gray-800/70 border-gray-700 hover:border-gray-500 transition-all overflow-hidden">
                         <CardContent className="p-5">
                           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 

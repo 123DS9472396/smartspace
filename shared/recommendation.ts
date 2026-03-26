@@ -4,9 +4,8 @@ import { maharashtraWarehouses, type WarehouseData } from "../client/data/wareho
 import { createClient } from '@supabase/supabase-js';
 import { knnRecommend, randomForestRecommend, hybridRecommend, mapToRecommendedWarehouse } from "./ml-algorithms";
 
-// Use environment variables for Supabase credentials (server-side uses non-VITE prefix)
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://bsrzqffxgvdebyofmhzg.supabase.co';
-const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzcnpxZmZ4Z3ZkZWJ5b2ZtaHpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwNjEzNDcsImV4cCI6MjA3MjYzNzM0N30.VyCEg70kLhTV2l8ZyG9CfPb00FBdVrlVBcBUhyI88Z8';
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Direct client creation for server-side usage with Node.js global fetch
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {

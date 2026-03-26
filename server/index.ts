@@ -1,7 +1,6 @@
 import "dotenv/config";
 import express, { RequestHandler } from "express";
 import cors from "cors";
-import { createClient } from '@supabase/supabase-js';
 import { handleDemo } from "./routes/demo";
 import { handleRecommend } from "./routes/recommend";
 import approveSubmissionRouter from "./routes/approveSubmission";
@@ -18,12 +17,7 @@ import {
 } from "./routes/warehouse-submissions";
 import { getOwnerAnalytics, getAdminAnalytics, getWarehouseList, getWarehouseDetail, getAnalyticsFilters, getDashboardStats } from "./routes/analytics";
 
-// Create Supabase client directly to avoid module resolution issues
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'https://bsrzqffxgvdebyofmhzg.supabase.co';
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-console.log('🔧 Server index loaded - Supabase configured');
+import { supabase } from "./lib/supabaseClient";
 
 // Admin booking handlers defined inline
 const getAdminBookings: RequestHandler = async (req, res) => {

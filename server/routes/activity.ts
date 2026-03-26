@@ -1,11 +1,6 @@
 import 'dotenv/config';
 import { RequestHandler } from "express";
-import { createClient } from '@supabase/supabase-js';
-
-// Create Supabase client
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://bsrzqffxgvdebyofmhzg.supabase.co';
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabaseAnon as supabase } from '../lib/supabaseClient';
 
 // Log a new activity
 export const logActivity: RequestHandler = async (req, res) => {

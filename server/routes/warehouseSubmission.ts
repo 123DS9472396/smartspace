@@ -1,13 +1,7 @@
 import { Router, RequestHandler } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabaseClient';
 
 const router = Router();
-
-// Use service role for direct database access (bypasses RLS)
-const supabaseServiceRole = createClient(
-  process.env.VITE_SUPABASE_URL || 'https://bsrzqffxgvdebyofmhzg.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzcnpxZmZ4Z3ZkZWJ5b2ZtaHpnIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA2MTM0NywiZXhwIjoyMDcyNjM3MzQ3fQ.riHDx30ne4wC2xegEbfVoI0OzRE9Ytp_XZmgmSEwrLc'
-);
 
 /**
  * POST /api/warehouse-submission
@@ -43,7 +37,7 @@ const createWarehouseSubmission: RequestHandler = async (req, res) => {
     }
 
     // Create submission with service role (bypasses RLS)
-    const { data: submission, error: submissionError } = await supabaseServiceRole
+    const { data: submission, error: submissionError } = await supabase
       .from('warehouse_submissions')
       .insert({
         owner_id,
@@ -77,7 +71,7 @@ const createWarehouseSubmission: RequestHandler = async (req, res) => {
 
     // Create notification for owner
     try {
-      await supabaseServiceRole
+      await supabase
         .from('notifications')
         .insert({
           user_id: owner_id,
@@ -128,7 +122,7 @@ const uploadWarehouseFile: RequestHandler = async (req, res) => {
     const fileBuffer = Buffer.isBuffer(content) ? content : Buffer.from(content, 'base64');
 
     // Upload using service role (bypasses RLS)
-    const { data, error } = await supabaseServiceRole.storage
+    const { data, error } = await supabase.storage
       .from(bucket)
       .upload(filename, fileBuffer, {
         contentType: contentType || 'application/octet-stream',
@@ -145,7 +139,7 @@ const uploadWarehouseFile: RequestHandler = async (req, res) => {
     }
 
     // Get public URL
-    const { data: urlData } = supabaseServiceRole.storage
+    const { data: urlData } = supabase.storage
       .from(bucket)
       .getPublicUrl(filename);
 

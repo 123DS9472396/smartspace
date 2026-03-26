@@ -1,14 +1,5 @@
 import { RequestHandler } from "express";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl =
-  process.env.VITE_SUPABASE_URL || "https://bsrzqffxgvdebyofmhzg.supabase.co";
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE ||
-  process.env.SUPABASE_SERVICE_KEY ||
-  process.env.VITE_SUPABASE_ANON_KEY ||
-  "";
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '../lib/supabaseClient';
 
 // Normalize block IDs from any format
 const normalizeBlockIds = (blocks: any[]): string[] =>

@@ -118,42 +118,15 @@ export const WarehouseProvider = ({ children }: WarehouseProviderProps) => {
       setLoading(true);
       setError(null);
 
-      // Using improved query based on actual Supabase schema
-      const { data, error: fetchError } = await supabase
-        .from('warehouses')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
-
-      if (fetchError) {
-        throw fetchError;
-      }
-
-      // Check if we got warehouses
-      if (!data || data.length === 0) {
-        console.log('No warehouses found in Supabase');
+      // Always use analytics endpoint for real-time values
+      const res = await fetch('/api/analytics/warehouses');
+      if (!res.ok) throw new Error('Failed to fetch analytics data');
+      const json = await res.json();
+      if (!json.success || !Array.isArray(json.analytics)) {
         setWarehouses([]);
         return;
       }
-
-      // Map database columns to UI format
-      const enhancedWarehouses = data.map((wh: any) => ({
-        ...wh,
-        warehouse_name: wh.name,
-        warehouse_address: wh.address,
-        warehouse_licence_number: wh.wh_id,
-        total_size_sqft: wh.total_area,
-        capacity_mt: wh.capacity,
-        pricing_inr_sqft_month: wh.price_per_sqft,
-        contact_number: wh.owner_phone,
-        is_active: wh.status === 'active',
-        is_verified: wh.ownership_certificate === 'Verified',
-        available_area: Math.floor((wh.total_area || 10000) * (1 - (wh.occupancy || 0.5))),
-        occupancy_rate: Math.floor((wh.occupancy || 0.5) * 100),
-        monthly_revenue: Math.floor((wh.total_area || 10000) * (wh.price_per_sqft || 50) * (wh.occupancy || 0.7)),
-      }));
-
-      setWarehouses(enhancedWarehouses);
+      setWarehouses(json.analytics);
     } catch (err) {
       console.error('Error fetching warehouses:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch warehouses');
@@ -165,31 +138,12 @@ export const WarehouseProvider = ({ children }: WarehouseProviderProps) => {
 
   const fetchWarehouseById = async (id: string): Promise<Warehouse | null> => {
     try {
-      const { data, error } = await supabase
-        .from('warehouses')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        throw error;
-      }
-
-      return {
-        ...data,
-        warehouse_name: data.name,
-        warehouse_address: data.address,
-        warehouse_licence_number: data.wh_id,
-        total_size_sqft: data.total_area,
-        capacity_mt: data.capacity,
-        pricing_inr_sqft_month: data.price_per_sqft,
-        contact_number: data.owner_phone,
-        is_active: data.status === 'active',
-        is_verified: data.ownership_certificate === 'Verified',
-        available_area: Math.floor((data.total_area || 10000) * (1 - (data.occupancy || 0.5))),
-        occupancy_rate: Math.floor((data.occupancy || 0.5) * 100),
-        monthly_revenue: Math.floor((data.total_area || 10000) * (data.price_per_sqft || 50) * (data.occupancy || 0.7)),
-      };
+      // Always use analytics endpoint for real-time values
+      const res = await fetch(`/api/analytics/warehouse/${id}`);
+      if (!res.ok) throw new Error('Failed to fetch warehouse analytics');
+      const json = await res.json();
+      if (!json.success || !json.analytics) return null;
+      return json.analytics;
     } catch (err) {
       console.error('Error fetching warehouse:', err);
       return null;
@@ -198,22 +152,12 @@ export const WarehouseProvider = ({ children }: WarehouseProviderProps) => {
 
   const fetchOwnerWarehouses = async (ownerId: string): Promise<Warehouse[]> => {
     try {
-      const { data, error } = await supabase
-        .from('warehouses')
-        .select('*')
-        .eq('owner_id', ownerId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        throw error;
-      }
-
-      return data.map(warehouse => ({
-        ...warehouse,
-        available_area: Math.floor(warehouse.total_size_sqft * 0.3),
-        occupancy_rate: Math.floor(Math.random() * 40 + 60),
-        monthly_revenue: Math.floor(warehouse.total_size_sqft * warehouse.pricing_inr_sqft_month * 0.7),
-      }));
+      // Always use analytics endpoint for real-time values
+      const res = await fetch(`/api/analytics/owner/${ownerId}`);
+      if (!res.ok) throw new Error('Failed to fetch owner analytics');
+      const json = await res.json();
+      if (!json.success || !Array.isArray(json.analytics)) return [];
+      return json.analytics;
     } catch (err) {
       console.error('Error fetching owner warehouses:', err);
       return [];
@@ -298,73 +242,25 @@ export const WarehouseProvider = ({ children }: WarehouseProviderProps) => {
 
   const searchWarehouses = async (query: SearchQuery): Promise<Warehouse[]> => {
     try {
-      let supabaseQuery = supabase
-        .from('warehouses')
-        .select('*')
-        .eq('is_active', true);
-
-      // Apply filters
-      if (query.city) {
-        supabaseQuery = supabaseQuery.ilike('city', `%${query.city}%`);
-      }
-
-      if (query.location) {
-        supabaseQuery = supabaseQuery.or(`warehouse_address.ilike.%${query.location}%,city.ilike.%${query.location}%,district.ilike.%${query.location}%`);
-      }
-
-      if (query.warehouseType) {
-        supabaseQuery = supabaseQuery.ilike('warehouse_type', `%${query.warehouseType}%`);
-      }
-
-      if (query.minPrice !== undefined) {
-        supabaseQuery = supabaseQuery.gte('pricing_inr_sqft_month', query.minPrice);
-      }
-
-      if (query.maxPrice !== undefined) {
-        supabaseQuery = supabaseQuery.lte('pricing_inr_sqft_month', query.maxPrice);
-      }
-
-      if (query.minArea !== undefined) {
-        supabaseQuery = supabaseQuery.gte('total_size_sqft', query.minArea);
-      }
-
-      if (query.maxArea !== undefined) {
-        supabaseQuery = supabaseQuery.lte('total_size_sqft', query.maxArea);
-      }
-
-      // Apply sorting
-      if (query.sortBy) {
-        const column = query.sortBy === 'price' ? 'pricing_inr_sqft_month' 
-                    : query.sortBy === 'area' ? 'total_size_sqft'
-                    : 'created_at';
-        supabaseQuery = supabaseQuery.order(column, { 
-          ascending: query.sortOrder === 'asc' 
-        });
-      } else {
-        supabaseQuery = supabaseQuery.order('created_at', { ascending: false });
-      }
-
-      // Apply pagination
-      if (query.limit) {
-        supabaseQuery = supabaseQuery.limit(query.limit);
-      }
-
-      if (query.offset) {
-        supabaseQuery = supabaseQuery.range(query.offset, query.offset + (query.limit || 10) - 1);
-      }
-
-      const { data, error } = await supabaseQuery;
-
-      if (error) {
-        throw error;
-      }
-
-      return data.map(warehouse => ({
-        ...warehouse,
-        available_area: Math.floor(warehouse.total_size_sqft * 0.3),
-        occupancy_rate: Math.floor(Math.random() * 40 + 60),
-        monthly_revenue: Math.floor(warehouse.total_size_sqft * warehouse.pricing_inr_sqft_month * 0.7),
-      }));
+      // Always use analytics endpoint for real-time values
+      const params = new URLSearchParams();
+      if (query.city) params.append('city', query.city);
+      if (query.location) params.append('location', query.location);
+      if (query.warehouseType) params.append('warehouseType', query.warehouseType);
+      if (query.minPrice !== undefined) params.append('minPrice', String(query.minPrice));
+      if (query.maxPrice !== undefined) params.append('maxPrice', String(query.maxPrice));
+      if (query.minArea !== undefined) params.append('minArea', String(query.minArea));
+      if (query.maxArea !== undefined) params.append('maxArea', String(query.maxArea));
+      if (query.sortBy) params.append('sortBy', query.sortBy);
+      if (query.sortOrder) params.append('sortOrder', query.sortOrder);
+      if (query.limit) params.append('limit', String(query.limit));
+      if (query.offset) params.append('offset', String(query.offset));
+      
+      const res = await fetch(`/api/analytics/warehouses/search?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to search analytics');
+      const json = await res.json();
+      if (!json.success || !Array.isArray(json.analytics)) return [];
+      return json.analytics;
     } catch (err) {
       console.error('Error searching warehouses:', err);
       return [];

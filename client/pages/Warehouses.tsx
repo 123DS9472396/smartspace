@@ -567,7 +567,7 @@ export default function Warehouses() {
                           <SelectValue placeholder="All Districts" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Districts</SelectItem>
+                          <SelectItem value="all">All Districts</SelectItem>
                           {filterOptions.districts.map(district => (
                             <SelectItem key={district} value={district}>{district}</SelectItem>
                           ))}
@@ -584,7 +584,7 @@ export default function Warehouses() {
                           <SelectValue placeholder="All Types" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Types</SelectItem>
+                          <SelectItem value="all">All Types</SelectItem>
                           {filterOptions.warehouseTypes.map(type => (
                             <SelectItem key={type} value={type}>{type}</SelectItem>
                           ))}
@@ -601,7 +601,7 @@ export default function Warehouses() {
                           <SelectValue placeholder="Any Capacity" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any Capacity</SelectItem>
+                          <SelectItem value="all">Any Capacity</SelectItem>
                           {filterOptions.capacityRanges.map(range => (
                             <SelectItem key={range.label} value={range.label}>{range.label}</SelectItem>
                           ))}
@@ -618,7 +618,7 @@ export default function Warehouses() {
                           <SelectValue placeholder="Any Price" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any Price</SelectItem>
+                          <SelectItem value="all">Any Price</SelectItem>
                           {filterOptions.priceRanges.map(range => (
                             <SelectItem key={range.label} value={range.label}>{range.label}</SelectItem>
                           ))}
@@ -635,7 +635,7 @@ export default function Warehouses() {
                           <SelectValue placeholder="Any Availability" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any Availability</SelectItem>
+                          <SelectItem value="all">Any Availability</SelectItem>
                           {filterOptions.occupancyRanges.map(range => (
                             <SelectItem key={range.label} value={range.label}>{range.label}</SelectItem>
                           ))}
@@ -652,7 +652,7 @@ export default function Warehouses() {
                           <SelectValue placeholder="Any Certificate" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any Certificate</SelectItem>
+                          <SelectItem value="all">Any Certificate</SelectItem>
                           {filterOptions.certificateTypes.map(type => (
                             <SelectItem key={type} value={type}>{type}</SelectItem>
                           ))}
@@ -669,7 +669,7 @@ export default function Warehouses() {
                           <SelectValue placeholder="Any Status" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Any Status</SelectItem>
+                          <SelectItem value="all">Any Status</SelectItem>
                           {filterOptions.statusTypes.map(status => (
                             <SelectItem key={status} value={status}>{status}</SelectItem>
                           ))}

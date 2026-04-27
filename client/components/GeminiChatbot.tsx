@@ -1,374 +1,687 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { MessageCircle, Send, X, Bot, User, Minimize2, Maximize2, RefreshCw, Sparkles, Brain } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { getChatbotResponse, getAIResponse } from '@/services/aiService';
-import { warehouseService } from '@/services/warehouseService';
-import { smartBookingService } from '@/services/smartBookingService';
+/**
+ * SmartSpace Seeker Chatbot
+ * ─ Only visible to authenticated SEEKERS
+ * ─ Fetches live warehouse data from Supabase for accurate context
+ * ─ Uses Groq (llama-3.3-70b) → OpenRouter → Gemini LLM chain
+ * ─ Premium dark glassmorphism UI
+ */
+
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { MessageCircle, Send, X, Bot, User, Minimize2, Maximize2, RefreshCw, Warehouse, Sparkles, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/services/supabaseClient';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Message {
   id: string;
-  type: 'user' | 'bot';
+  role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
-  isLoading?: boolean;
-  provider?: string;
-  model?: string;
+  isStreaming?: boolean;
 }
 
-interface ChatbotProps {
-  className?: string;
+interface LiveWarehouseContext {
+  totalCount: number;
+  cityBreakdown: Record<string, { count: number; avgPrice: number; minPrice: number; maxPrice: number }>;
+  priceRange: { min: number; max: number; avg: number };
+  topWarehouses: Array<{ name: string; city: string; district: string; price: number; area: number; type: string }>;
+  availableTypes: string[];
+  fetchedAt: Date;
 }
 
-export function GeminiChatbot({ className = '' }: ChatbotProps) {
+// ─── API Keys from env ────────────────────────────────────────────────────────
+
+const GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const OPENROUTER_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
+const GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+
+// ─── LLM Callers ─────────────────────────────────────────────────────────────
+
+async function callGroq(messages: Array<{ role: string; content: string }>, systemPrompt: string): Promise<string> {
+  if (!GROQ_KEY) throw new Error('Groq key not set');
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${GROQ_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      max_tokens: 1024,
+      temperature: 0.65,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(`Groq error ${res.status}: ${err?.error?.message || res.statusText}`);
+  }
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+async function callOpenRouter(messages: Array<{ role: string; content: string }>, systemPrompt: string): Promise<string> {
+  if (!OPENROUTER_KEY) throw new Error('OpenRouter key not set');
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENROUTER_KEY}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': window.location.origin,
+      'X-Title': 'SmartSpace Warehouse',
+    },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-3.3-70b-instruct:free',
+      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      max_tokens: 1024,
+      temperature: 0.65,
+    }),
+  });
+  if (!res.ok) throw new Error(`OpenRouter error ${res.status}`);
+  const data = await res.json();
+  return data.choices[0].message.content;
+}
+
+async function callGemini(messages: Array<{ role: string; content: string }>, systemPrompt: string): Promise<string> {
+  if (!GEMINI_KEY) throw new Error('Gemini key not set');
+  // Build combined context
+  const allContent = [systemPrompt, ...messages.map(m => `${m.role}: ${m.content}`)].join('\n\n');
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=${GEMINI_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: allContent }] }],
+        generationConfig: { temperature: 0.65, maxOutputTokens: 1024 },
+      }),
+    }
+  );
+  if (!res.ok) throw new Error(`Gemini error ${res.status}`);
+  const data = await res.json();
+  return data.candidates[0].content.parts[0].text;
+}
+
+async function getLLMResponse(
+  messages: Array<{ role: string; content: string }>,
+  systemPrompt: string
+): Promise<{ text: string; provider: string }> {
+  const providers = [
+    { name: 'Groq (Llama 3.3)', fn: () => callGroq(messages, systemPrompt), enabled: !!GROQ_KEY },
+    { name: 'OpenRouter (Llama 3.3)', fn: () => callOpenRouter(messages, systemPrompt), enabled: !!OPENROUTER_KEY },
+    { name: 'Gemini 1.5 Flash', fn: () => callGemini(messages, systemPrompt), enabled: !!GEMINI_KEY },
+  ];
+
+  for (const p of providers) {
+    if (!p.enabled) continue;
+    try {
+      console.log(`🤖 Trying ${p.name}...`);
+      const text = await p.fn();
+      console.log(`✅ ${p.name} responded`);
+      return { text, provider: p.name };
+    } catch (e) {
+      console.warn(`⚠️ ${p.name} failed:`, e);
+    }
+  }
+
+  return {
+    text: 'I\'m having trouble connecting to the AI service right now. Please try again in a moment. In the meantime, you can browse warehouses directly from the **Find Warehouses** page.',
+    provider: 'fallback',
+  };
+}
+
+// ─── Live DB Fetcher ──────────────────────────────────────────────────────────
+
+async function fetchLiveWarehouseContext(): Promise<LiveWarehouseContext> {
+  console.log('📊 Fetching live warehouse data from Supabase...');
+
+  const { data, error } = await supabase
+    .from('warehouses')
+    .select('name, city, district, price_per_sqft, total_area, warehouse_type, status, rating')
+    .eq('status', 'active')
+    .order('rating', { ascending: false })
+    .limit(500);
+
+  if (error || !data || data.length === 0) {
+    console.warn('⚠️ Could not fetch warehouses:', error?.message);
+    return {
+      totalCount: 0,
+      cityBreakdown: {},
+      priceRange: { min: 0, max: 0, avg: 0 },
+      topWarehouses: [],
+      availableTypes: [],
+      fetchedAt: new Date(),
+    };
+  }
+
+  // City breakdown
+  const cityBreakdown: LiveWarehouseContext['cityBreakdown'] = {};
+  for (const w of data) {
+    const city = (w.city || 'Unknown').trim();
+    if (!cityBreakdown[city]) cityBreakdown[city] = { count: 0, avgPrice: 0, minPrice: Infinity, maxPrice: 0 };
+    const p = Number(w.price_per_sqft) || 0;
+    cityBreakdown[city].count++;
+    cityBreakdown[city].avgPrice = (cityBreakdown[city].avgPrice * (cityBreakdown[city].count - 1) + p) / cityBreakdown[city].count;
+    if (p > 0) cityBreakdown[city].minPrice = Math.min(cityBreakdown[city].minPrice, p);
+    cityBreakdown[city].maxPrice = Math.max(cityBreakdown[city].maxPrice, p);
+  }
+  // Fix Infinity
+  for (const city of Object.keys(cityBreakdown)) {
+    if (cityBreakdown[city].minPrice === Infinity) cityBreakdown[city].minPrice = 0;
+    cityBreakdown[city].avgPrice = Math.round(cityBreakdown[city].avgPrice);
+  }
+
+  const prices = data.map(w => Number(w.price_per_sqft)).filter(p => p > 0);
+  const priceRange = {
+    min: Math.min(...prices),
+    max: Math.max(...prices),
+    avg: Math.round(prices.reduce((a, b) => a + b, 0) / prices.length),
+  };
+
+  const types = [...new Set(data.map(w => w.warehouse_type).filter(Boolean))];
+
+  const topWarehouses = data.slice(0, 15).map(w => ({
+    name: w.name,
+    city: w.city || 'Unknown',
+    district: w.district || 'Unknown',
+    price: Number(w.price_per_sqft) || 0,
+    area: Number(w.total_area) || 0,
+    type: w.warehouse_type || 'General',
+  }));
+
+  console.log(`✅ Fetched context: ${data.length} warehouses, ${Object.keys(cityBreakdown).length} cities`);
+
+  return {
+    totalCount: data.length,
+    cityBreakdown,
+    priceRange,
+    topWarehouses,
+    availableTypes: types,
+    fetchedAt: new Date(),
+  };
+}
+
+function buildSystemPrompt(ctx: LiveWarehouseContext, seekerName: string): string {
+  const cityLines = Object.entries(ctx.cityBreakdown)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 12)
+    .map(([city, d]) => `  • ${city}: ${d.count} warehouses | ₹${d.minPrice}–₹${d.maxPrice}/sqft (avg ₹${d.avgPrice})`)
+    .join('\n');
+
+  const topWarehouseLines = ctx.topWarehouses
+    .slice(0, 8)
+    .map(w => `  • "${w.name}" in ${w.city} — ₹${w.price}/sqft, ${w.area.toLocaleString()} sqft, ${w.type}`)
+    .join('\n');
+
+  return `You are the SmartSpace AI Assistant — an expert warehouse advisor for seekers in Maharashtra, India.
+You speak directly to ${seekerName || 'the seeker'}.
+
+═══════════════════════════════════════════
+LIVE DATABASE SNAPSHOT (as of ${ctx.fetchedAt.toLocaleTimeString()})
+═══════════════════════════════════════════
+Total Available Warehouses: ${ctx.totalCount}
+Price Range: ₹${ctx.priceRange.min}–₹${ctx.priceRange.max}/sqft | Average: ₹${ctx.priceRange.avg}/sqft
+
+CITY-WISE BREAKDOWN:
+${cityLines || '  No city data available'}
+
+TOP RATED WAREHOUSES RIGHT NOW:
+${topWarehouseLines || '  No warehouse data available'}
+
+WAREHOUSE TYPES AVAILABLE:
+${ctx.availableTypes.slice(0, 12).join(', ') || 'General Storage, Godown, Cold Storage'}
+═══════════════════════════════════════════
+
+YOUR ROLE:
+1. Help seekers find warehouses using REAL data above
+2. Give accurate price quotes from the live data
+3. Recommend specific cities/districts based on budget & needs
+4. Help understand the SmartSpace platform features
+5. Answer questions about booking, comparing, and contacting owners
+
+RULES:
+- NEVER make up warehouse names or prices — use only what's in the live data above
+- If asked about a city not in the data, say it honestly  
+- Be direct, helpful, and concise
+- Use markdown formatting (bold, bullet points) for clarity
+- Always suggest the next action (Filter by city, Use ML Recommendations, etc.)
+- Encourage seekers to use the platform features: Warehouses page, ML Recommendations, Compare, Smart Booking`;
+}
+
+// ─── Quick Suggestions ────────────────────────────────────────────────────────
+
+const QUICK_SUGGESTIONS = [
+  '🔍 Which city has the most warehouses?',
+  '💰 What are the cheapest warehouses available?',
+  '❄️ Do you have cold storage options?',
+  '📍 Show me warehouses in Pune',
+  '📦 I need 50,000 sqft of space',
+  '🏭 Compare Mumbai vs Pune warehouses',
+];
+
+// ─── Markdown-like renderer ───────────────────────────────────────────────────
+
+function renderMessage(content: string) {
+  return content.split('\n').map((line, i) => {
+    // Bold
+    const parts = line.split(/\*\*(.*?)\*\*/g);
+    return (
+      <span key={i} className="block">
+        {parts.map((part, j) =>
+          j % 2 === 1 ? <strong key={j} className="font-semibold text-blue-300">{part}</strong> : part
+        )}
+      </span>
+    );
+  });
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export function GeminiChatbot() {
+  const { profile } = useAuth();
+
+  // STRICT seeker-only gate
+  if (!profile || profile.user_type !== 'seeker') return null;
+
+  return <SeekerChatbot seekerName={profile.name || 'Seeker'} />;
+}
+
+function SeekerChatbot({ seekerName }: { seekerName: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      type: 'bot',
-      content: 'Hi! I\'m your AI assistant for SmartSpace Warehouse powered by Claude 3.5 Sonnet. I can help you find the perfect warehouse, answer questions about facilities, pricing, and more. How can I help you today?',
-      timestamp: new Date(),
-      provider: 'AI Assistant',
-      model: 'Multiple LLMs'
-    }
-  ]);
-  const [inputMessage, setInputMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isThinking, setIsThinking] = useState(false);
+  const [warehouseCtx, setWarehouseCtx] = useState<LiveWarehouseContext | null>(null);
+  const [isLoadingCtx, setIsLoadingCtx] = useState(false);
+  const [provider, setProvider] = useState<string>('');
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const chatHistory = useRef<Array<{ role: string; content: string }>>([]);
 
-  // Auto-scroll to bottom when new messages are added
+  // Unique localStorage key per user
+  const storageKey = `smartspace_chat_${seekerName || 'default'}`;
+
+  // Load chat from localStorage on mount
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed.messages)) {
+          setMessages(parsed.messages.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })));
+          chatHistory.current = parsed.chatHistory || [];
+          setProvider(parsed.provider || '');
+          setUnreadCount(parsed.unreadCount || 0);
+        }
+      }
+    } catch (e) {
+      // Ignore
     }
+  }, []);
+
+  // Persist chat to localStorage on change
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        messages,
+        chatHistory: chatHistory.current,
+        provider,
+        unreadCount,
+      }));
+    } catch (e) {}
+  }, [messages, provider, unreadCount]);
+
+  // Auto-scroll
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Focus input when chat opens
+  // Focus input when opened
   useEffect(() => {
-    if (isOpen && !isMinimized && inputRef.current) {
-      inputRef.current.focus();
+    if (isOpen && !isMinimized) {
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen, isMinimized]);
 
-  // Simulated Gemini AI responses based on warehouse context
-  const generateGeminiResponse = async (userMessage: string): Promise<string> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+  // Load context + greeting when opening first time
+  useEffect(() => {
+    if (!isOpen || messages.length > 0) return;
+    setIsLoadingCtx(true);
+    fetchLiveWarehouseContext().then(ctx => {
+      setWarehouseCtx(ctx);
+      setIsLoadingCtx(false);
+      const greeting: Message = {
+        id: 'welcome',
+        role: 'assistant',
+        content: ctx.totalCount > 0
+          ? `Hey ${seekerName}! 👋 I'm your SmartSpace AI assistant.\n\nI have **live data on ${ctx.totalCount} available warehouses** across ${Object.keys(ctx.cityBreakdown).length} cities, with prices from **₹${ctx.priceRange.min}–₹${ctx.priceRange.max}/sqft**.\n\nHow can I help you find the perfect warehouse today?`
+          : `Hey ${seekerName}! 👋 I'm your SmartSpace AI assistant — here to help you find the perfect warehouse in Maharashtra.\n\nWhat are you looking for today?`,
+        timestamp: new Date(),
+      };
+      setMessages([greeting]);
+    }).catch(() => {
+      setIsLoadingCtx(false);
+      setMessages([{
+        id: 'welcome',
+        role: 'assistant',
+        content: `Hey ${seekerName}! 👋 I'm your SmartSpace AI assistant.\n\nAsk me anything about warehouses — locations, pricing, features, or how to use the platform!`,
+        timestamp: new Date(),
+      }]);
+    });
+  }, [isOpen]);
 
-    const message = userMessage.toLowerCase();
-
-    // Check if user is asking for specific warehouse listings
-    if (message.includes('show') || message.includes('list') || message.includes('find') || message.includes('warehouses in')) {
-      // Extract location if mentioned
-      const maharashtraCities = ['mumbai', 'pune', 'nashik', 'aurangabad', 'thane', 'solapur', 'kolhapur', 'sangli', 'satara', 'amravati', 'akola', 'nanded', 'latur', 'dhule'];
-      const mentionedCity = maharashtraCities.find(city => message.includes(city));
-
-      if (mentionedCity) {
-        // Generate realistic warehouse data based on the city
-        const cityCapitalized = mentionedCity.charAt(0).toUpperCase() + mentionedCity.slice(1);
-        const basePrice = mentionedCity === 'mumbai' ? 80 : mentionedCity === 'pune' ? 70 : 60;
-        const warehouseCount = mentionedCity === 'mumbai' ? 25000 : mentionedCity === 'pune' ? 18000 : 12000;
-
-        return `Here are **TOP VERIFIED WAREHOUSES** available in **${cityCapitalized}** right now:\n\n**🏢 PREMIUM LISTINGS:**\n\n**1. ${cityCapitalized} Logistics Hub**\n📍 Location: ${cityCapitalized} Industrial Area\n📐 Total Size: ${(Math.random() * 30000 + 40000).toFixed(0)} sq ft\n💰 Price: ₹${basePrice + Math.floor(Math.random() * 15)}/sq ft/month\n✅ Available: ${(Math.random() * 30 + 60).toFixed(0)}%\n⭐ Rating: ${(Math.random() * 0.8 + 4.2).toFixed(1)}/5\n🚚 Features: 24/7 Security, Loading Dock, Climate Control\n\n**2. Smart Storage ${cityCapitalized}**\n📍 Location: ${cityCapitalized} Highway Belt\n📐 Total Size: ${(Math.random() * 25000 + 30000).toFixed(0)} sq ft\n💰 Price: ₹${basePrice + Math.floor(Math.random() * 10) - 5}/sq ft/month\n✅ Available: ${(Math.random() * 40 + 50).toFixed(0)}%\n⭐ Rating: ${(Math.random() * 0.6 + 4.0).toFixed(1)}/5\n🚚 Features: Power Backup, Fire Safety, CCTV\n\n**3. Metro Warehouse Complex**\n📍 Location: ${cityCapitalized} MIDC Area\n📐 Total Size: ${(Math.random() * 40000 + 50000).toFixed(0)} sq ft\n💰 Price: ₹${basePrice + Math.floor(Math.random() * 20)}/sq ft/month\n✅ Available: ${(Math.random() * 35 + 45).toFixed(0)}%\n⭐ Rating: ${(Math.random() * 0.7 + 4.1).toFixed(1)}/5\n🚚 Features: Rail Access, Container Yard, Office Space\n\n**� ${cityCapitalized} Market Summary:**\n• Total Warehouses: ${warehouseCount.toLocaleString()}+\n• Price Range: ₹${basePrice - 10}-${basePrice + 20}/sq ft\n• Average Availability: 65%\n• Popular Areas: Industrial Belt, Highway Zone, MIDC\n\n**🎯 RECOMMENDED ACTION:**\n1. Visit our "Find Warehouses" page\n2. Filter by "${cityCapitalized}" location  \n3. Set your area & budget preferences\n4. Contact directly for site visits\n\n*These are real-time listings. Availability changes rapidly!*`;
-      }
-
-      return `**🔍 MAHARASHTRA WAREHOUSE SEARCH**\n\nI can help you find warehouses! Here are our **LIVE INVENTORY HIGHLIGHTS**:\n\n**�️ TOP CITIES & AVAILABILITY:**\n\n• **MUMBAI** - 25,000+ warehouses\n  Price: ₹70-100/sq ft | High demand area\n  \n• **PUNE** - 18,000+ warehouses  \n  Price: ₹60-90/sq ft | IT & Manufacturing hub\n  \n• **NASHIK** - 12,000+ warehouses\n  Price: ₹50-75/sq ft | Wine & Agriculture center\n  \n• **AURANGABAD** - 15,000+ warehouses\n  Price: ₹55-80/sq ft | Industrial corridor\n  \n• **THANE** - 20,000+ warehouses\n  Price: ₹65-95/sq ft | Mumbai metro area\n\n**� CURRENT MARKET STATUS:**\n✅ 150,000+ verified warehouses\n✅ 13.2B+ sq ft total capacity  \n✅ 65% average availability\n✅ ₹25-150/sq ft price range\n\n**💡 PRO TIP:** Type something like:\n• "Show warehouses in Mumbai"\n• "Find storage in Pune under ₹70"\n• "List warehouses in Nashik with 50000 sqft"\n\n**Which city are you interested in?** 🎯`;
-    }
-
-    // Warehouse-specific responses
-    if (message.includes('warehouse') || message.includes('storage')) {
-      if (message.includes('price') || message.includes('cost') || message.includes('pricing')) {
-        return 'Based on our Maharashtra warehouse database, prices typically range from ₹25-150 per sq ft per month. Factors affecting pricing include:\n\n• Location (Mumbai/Pune are premium)\n• Warehouse size and specifications\n• Available amenities (climate control, security, etc.)\n• Occupancy rates and availability\n\nWould you like me to help you find warehouses within a specific budget range?';
-      }
-
-      if (message.includes('location') || message.includes('city') || message.includes('district')) {
-        return 'Our database covers all major districts in Maharashtra including:\n\n• **Mumbai** - Premium logistics hub (25K+ warehouses)\n• **Pune** - IT and manufacturing center (18K+ warehouses)\n• **Nashik** - Agricultural and wine region (12K+ warehouses)\n• **Aurangabad** - Industrial corridor (15K+ warehouses)\n• **Thane** - Mumbai metropolitan area (20K+ warehouses)\n• **Kolhapur** - Sugar and textile hub (8K+ warehouses)\n\nEach location offers different advantages. Which area interests you most?';
-      }
-
-      if (message.includes('size') || message.includes('area') || message.includes('capacity')) {
-        return 'Our warehouses range from small-scale to mega facilities:\n\n• **Small**: 5,000-25,000 sq ft (500-2,500 MT)\n• **Medium**: 25,000-100,000 sq ft (2,500-10,000 MT)\n• **Large**: 100,000-500,000 sq ft (10,000-50,000 MT)\n• **Mega**: 500,000+ sq ft (50,000+ MT)\n\nWhat size range would work best for your business?';
-      }
-
-      if (message.includes('amenities') || message.includes('features') || message.includes('facilities')) {
-        return 'Common warehouse amenities in our network include:\n\n• **Security**: 24/7 surveillance, access control\n• **Climate**: Temperature/humidity control\n• **Loading**: Multiple dock doors, ramps\n• **Technology**: WMS integration, RFID tracking\n• **Certifications**: FDA, FSSAI, pharmaceutical grade\n• **Services**: Material handling, inventory management\n\nAny specific amenities you\'re looking for?';
-      }
-
-      return 'I can help you find the perfect warehouse in Maharashtra! Our platform has detailed information on 150,000+ verified facilities. What specific requirements do you have? (location, size, budget, special features, etc.)';
-    }
-
-    if (message.includes('ai') || message.includes('recommendation') || message.includes('suggest')) {
-      return 'Our AI recommendation system uses advanced machine learning to match you with optimal warehouses based on:\n\n• **Your preferences** (location, budget, size)\n• **Business type** and industry requirements\n• **Similar user choices** (collaborative filtering)\n• **Market trends** and availability patterns\n\nTry our ML Recommendations tab in the warehouse browser for personalized suggestions!';
-    }
-
-    if (message.includes('contact') || message.includes('support') || message.includes('help')) {
-      return 'I\'m here to help! For additional support:\n\n• **Chat with me** - Ask any warehouse-related questions\n• **Browse our database** - Use filters to find specific warehouses\n• **ML Recommendations** - Get personalized suggestions\n• **Contact form** - Reach our human experts\n• **Phone**: +91-XXXX-XXXXXX\n• **Email**: support@smartspace.com\n\nWhat would you like to know more about?';
-    }
-
-    if (message.includes('hello') || message.includes('hi') || message.includes('hey')) {
-      return 'Hello! Welcome to SmartSpace Warehouse platform. I\'m your AI assistant powered by Gemini. I can help you:\n\n• Find warehouses by location, size, or budget\n• Show specific warehouse listings\n• Explain pricing and amenities\n• Provide market insights\n• Guide you through our platform\n\nWhat brings you here today?';
-    }
-
-    if (message.includes('thank') || message.includes('thanks')) {
-      return 'You\'re welcome! I\'m always here to help with your warehouse needs. Feel free to ask me anything about our facilities, pricing, locations, or platform features. Have a great day! 😊';
-    }
-
-    // Default response for general queries
-    return `I understand you're asking about "${userMessage}". As your warehouse AI assistant, I can help with:\n\n• **Finding warehouses** - Search by location, size, price\n• **Showing listings** - Get specific warehouse recommendations\n• **Pricing information** - Current market rates and trends\n• **Facility details** - Amenities, certifications, availability\n• **Platform guidance** - How to use our features effectively\n\nCould you please rephrase your question to be more specific about warehouses or our platform?`;
+  const handleOpen = () => {
+    setIsOpen(true);
+    setUnreadCount(0);
   };
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || isLoading) return;
+  const sendMessage = useCallback(async (text: string) => {
+    if (!text.trim() || isThinking) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: inputMessage,
-      timestamp: new Date()
+    const userMsg: Message = {
+      id: `u-${Date.now()}`,
+      role: 'user',
+      content: text.trim(),
+      timestamp: new Date(),
     };
 
-    const loadingMessage: Message = {
-      id: Date.now().toString() + '_loading',
-      type: 'bot',
+    const thinkingMsg: Message = {
+      id: `t-${Date.now()}`,
+      role: 'assistant',
       content: '',
       timestamp: new Date(),
-      isLoading: true
+      isStreaming: true,
     };
 
-    setMessages(prev => [...prev, userMessage, loadingMessage]);
-    setInputMessage('');
-    setIsLoading(true);
+    setMessages(prev => [...prev, userMsg, thinkingMsg]);
+    setInput('');
+    setIsThinking(true);
+
+    // Add to chat history for multi-turn context
+    chatHistory.current.push({ role: 'user', content: text.trim() });
 
     try {
-      // Check if this is a booking request (contains sq ft, space, book, need space, etc.)
-      const bookingKeywords = ['sq ft', 'sqft', 'square feet', 'book', 'booking', 'need space', 'looking for space', 'require space', 'want space', 'rent space'];
-      const isBookingRequest = bookingKeywords.some(keyword => inputMessage.toLowerCase().includes(keyword));
-      
-      let response: string;
-      
-      if (isBookingRequest) {
-        // Use Smart Booking Service for intelligent multi-warehouse matching
-        console.log('🧠 Detected booking request, using Smart Booking Service...');
-        const bookingResult = await smartBookingService.processNaturalLanguageBooking(inputMessage);
-        response = bookingResult.response;
-      } else {
-        // Use regular LLM chatbot for general queries
-        response = await getChatbotResponse(inputMessage);
-      }
+      // Always fetch the latest warehouse context before every LLM call
+      setIsLoadingCtx(true);
+      const latestCtx = await fetchLiveWarehouseContext();
+      setWarehouseCtx(latestCtx);
+      setIsLoadingCtx(false);
+
+      const sysPrompt = buildSystemPrompt(latestCtx, seekerName);
+
+      const { text: responseText, provider: usedProvider } = await getLLMResponse(
+        chatHistory.current.slice(-10), // Last 10 messages for context
+        sysPrompt
+      );
+
+      chatHistory.current.push({ role: 'assistant', content: responseText });
+      setProvider(usedProvider);
 
       setMessages(prev => {
-        const newMessages = [...prev];
-        const lastMessage = newMessages[newMessages.length - 1];
-        if (lastMessage.isLoading) {
-          lastMessage.content = response;
-          lastMessage.isLoading = false;
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last?.isStreaming) {
+          last.content = responseText;
+          last.isStreaming = false;
         }
-        return newMessages;
+        return updated;
       });
-    } catch (error) {
+
+      // If chat is closed, increment unread
+      if (!isOpen) setUnreadCount(c => c + 1);
+
+    } catch (e) {
+      console.error('Chat error:', e);
+      setIsLoadingCtx(false);
       setMessages(prev => {
-        const newMessages = [...prev];
-        const lastMessage = newMessages[newMessages.length - 1];
-        if (lastMessage.isLoading) {
-          lastMessage.content = 'I apologize, but I\'m having trouble connecting right now. Please try again in a moment or contact our support team for immediate assistance.';
-          lastMessage.isLoading = false;
+        const updated = [...prev];
+        const last = updated[updated.length - 1];
+        if (last?.isStreaming) {
+          last.content = 'Sorry, I encountered an error. Please try again.';
+          last.isStreaming = false;
         }
-        return newMessages;
+        return updated;
       });
     } finally {
-      setIsLoading(false);
+      setIsThinking(false);
     }
-  };
+  }, [isThinking, seekerName, isOpen]);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      sendMessage(input);
     }
   };
 
   const clearChat = () => {
-    setMessages([
-      {
-        id: '1',
-        type: 'bot',
-        content: 'Chat cleared! How can I help you with warehouse solutions today?',
-        timestamp: new Date()
-      }
-    ]);
+    chatHistory.current = [];
+    setMessages([]);
+    setProvider('');
+    setUnreadCount(0);
+    // Remove from localStorage
+    try { localStorage.removeItem(storageKey); } catch (e) {}
+    // Re-trigger greeting
+    if (warehouseCtx) {
+      const greeting: Message = {
+        id: `g-${Date.now()}`,
+        role: 'assistant',
+        content: `Chat cleared! How can I help you find a warehouse today, ${seekerName}?`,
+        timestamp: new Date(),
+      };
+      setMessages([greeting]);
+    }
   };
 
-  // Quick suggestion buttons
-  const quickSuggestions = [
-    'Show warehouses in Mumbai',
-    'What are the pricing ranges?',
-    'Find warehouses with climate control',
-    'Compare different locations'
-  ];
+  // ─── Closed FAB ──────────────────────────────────────────────────────────────
 
   if (!isOpen) {
     return (
-      <div className={`fixed bottom-6 right-6 z-50 ${className}`}>
-        <Button
-          onClick={() => setIsOpen(true)}
-          className="rounded-full w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 animate-pulse"
-          size="icon"
-        >
-          <MessageCircle className="h-6 w-6" />
-        </Button>
-        <div className="absolute -top-2 -right-2 w-4 h-4 bg-green-500 rounded-full animate-ping"></div>
+      <div className="fixed bottom-6 right-6 z-50">
+        <div className="relative">
+          <button
+            id="chatbot-fab"
+            onClick={handleOpen}
+            className="group relative w-14 h-14 rounded-full flex items-center justify-center chatbot-fab-btn"
+            aria-label="Open AI Assistant"
+          >
+            <Bot className="w-6 h-6 text-white" />
+            {/* Pulse ring */}
+            <span className="absolute inset-0 rounded-full animate-ping opacity-30 chatbot-fab-pulse" />
+          </button>
+          {/* Unread badge */}
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+              {unreadCount}
+            </span>
+          )}
+          {/* Tooltip */}
+          <div className="absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none chatbot-fab-tooltip">
+            <span className="text-sm text-white font-medium">AI Warehouse Assistant</span>
+          </div>
+        </div>
       </div>
     );
   }
 
+  // ─── Chat Window ──────────────────────────────────────────────────────────────
+
   return (
-    <div className={`fixed bottom-6 right-6 z-50 ${className}`}>
-      <Card className={`w-96 transition-all duration-300 shadow-2xl border-0 ${isMinimized ? 'h-16' : 'h-[600px]'
-        }`}>
-        <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="p-2 bg-white/20 rounded-full">
-                <Bot className="h-4 w-4" />
+    <div className="fixed bottom-6 right-6 z-50" id="chatbot-window">
+      <div
+        className={`flex flex-col overflow-hidden transition-all duration-300 ease-out chatbot-window${isMinimized ? ' minimized' : ''}`}
+        data-chatbot-size={isMinimized ? 'minimized' : 'normal'}
+      >
+        {/* ── Header ── */}
+        <div
+          className={`flex items-center justify-between px-4 py-3 flex-shrink-0 chatbot-header${isMinimized ? ' minimized' : ''}`}
+        >
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-9 h-9 rounded-full flex items-center justify-center chatbot-header-avatar-bg">
+                <Bot className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <CardTitle className="text-sm font-medium">SmartSpace AI Assistant</CardTitle>
-                <CardDescription className="text-xs text-blue-100">
-                  Powered by Gemini • Online
-                </CardDescription>
-              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-slate-900" />
             </div>
-            <div className="flex items-center space-x-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsMinimized(!isMinimized)}
-                className="text-white hover:bg-white/20 p-1 h-auto"
-              >
-                {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearChat}
-                className="text-white hover:bg-white/20 p-1 h-auto"
-                disabled={isLoading}
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsOpen(false)}
-                className="text-white hover:bg-white/20 p-1 h-auto"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+            <div>
+              <p className="text-white font-semibold text-sm leading-tight">SmartSpace AI</p>
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                <p className="text-blue-200 text-xs">
+                  {isLoadingCtx ? 'Loading live data...' : provider ? `via ${provider}` : 'Seeker Assistant • Online'}
+                </p>
+              </div>
             </div>
           </div>
-        </CardHeader>
+          <div className="flex items-center gap-1">
+            <button onClick={clearChat} className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors" title="Clear chat">
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => setIsMinimized(!isMinimized)} className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors" title={isMinimized ? 'Expand' : 'Minimize'}>
+              {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
+            </button>
+            <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-colors" title="Close">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
 
         {!isMinimized && (
-          <CardContent className="p-0 flex flex-col h-[calc(600px-80px)]">
-            {/* Messages Area */}
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`flex items-start space-x-2 max-w-[80%] ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                      }`}>
-                      <div className={`p-2 rounded-full ${message.type === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-200 dark:bg-gray-700'
-                        }`}>
-                        {message.type === 'user' ? (
-                          <User className="h-3 w-3" />
-                        ) : (
-                          <Bot className="h-3 w-3" />
-                        )}
-                      </div>
-                      <div className={`p-3 rounded-2xl ${message.type === 'user'
-                          ? 'bg-blue-600 text-white rounded-br-sm'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-sm'
-                        }`}>
-                        {message.isLoading ? (
-                          <div className="flex items-center space-x-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-.3s]"></div>
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-.5s]"></div>
-                          </div>
-                        ) : (
-                          <p className="text-sm whitespace-pre-line">{message.content}</p>
-                        )}
-                        <span className={`text-xs opacity-70 mt-1 block ${message.type === 'user' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'
-                          }`}>
-                          {message.timestamp.toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+          <>
+            {/* ── Live data badge ── */}
+            {warehouseCtx && warehouseCtx.totalCount > 0 && (
+              <div className="flex items-center gap-2 px-4 py-2 flex-shrink-0 chatbot-live-badge">
+                <Warehouse className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                <span className="text-xs text-emerald-300">
+                  Live: <strong>{warehouseCtx.totalCount}</strong> warehouses · ₹{warehouseCtx.priceRange.min}–₹{warehouseCtx.priceRange.max}/sqft · Updated {warehouseCtx.fetchedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            )}
 
-                {/* Quick suggestions (show when no recent user messages) */}
-                {messages.length === 1 && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Quick suggestions:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {quickSuggestions.map((suggestion, index) => (
-                        <Badge
-                          key={index}
-                          variant="outline"
-                          className="cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 text-xs py-1"
-                          onClick={() => setInputMessage(suggestion)}
-                        >
-                          {suggestion}
-                        </Badge>
+            {/* ── Messages ── */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 chatbot-scrollbar">
+
+              {/* Loading context state */}
+              {isLoadingCtx && messages.length === 0 && (
+                <div className="flex justify-center py-8">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="flex gap-1">
+                      {[0, 1, 2].map(i => (
+                        <div key={i} className={`w-2 h-2 rounded-full bg-blue-400 chatbot-bounce chatbot-bounce-${i}`} />
                       ))}
                     </div>
+                    <p className="text-xs text-slate-400">Loading live warehouse data...</p>
                   </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
+                </div>
+              )}
 
-            {/* Input Area */}
-            <div className="p-4 border-t dark:border-gray-700">
-              <div className="flex space-x-2">
-                <Input
+              {messages.map(msg => (
+                <div key={msg.id} className={`flex gap-2.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {msg.role === 'assistant' && (
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 chatbot-assistant-avatar-bg">
+                      <Bot className="w-4 h-4 text-white" />
+                    </div>
+                  )}
+                  <div className={`max-w-[82%] ${msg.role === 'user' ? 'order-1' : ''}`}>
+                    <div
+                      className={`px-3.5 py-2.5 text-sm leading-relaxed ${msg.role === 'user' ? 'chatbot-user-msg' : 'chatbot-assistant-msg'}`}
+                    >
+                      {msg.isStreaming ? (
+                        <div className="flex items-center gap-1.5 py-1">
+                          {[0, 1, 2].map(i => (
+                            <div key={i} className={`w-1.5 h-1.5 rounded-full bg-blue-400 chatbot-bounce chatbot-bounce-${i}`} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="whitespace-pre-wrap">{renderMessage(msg.content)}</div>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1 px-1">
+                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  {msg.role === 'user' && (
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 bg-slate-700">
+                      <User className="w-4 h-4 text-slate-300" />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* Quick suggestions — only at start */}
+              {messages.length <= 1 && !isLoadingCtx && (
+                <div className="space-y-2">
+                  <p className="text-xs text-slate-500 font-medium">Quick questions:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {QUICK_SUGGESTIONS.map((s, i) => (
+                      <button
+                        key={i}
+                        onClick={() => sendMessage(s)}
+                        className="text-xs px-3 py-1.5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 chatbot-quick-suggestion"
+                        aria-label={`Quick suggestion: ${s}`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Platform links */}
+              {messages.length <= 1 && !isLoadingCtx && (
+                <div className="rounded-xl p-3 space-y-2 chatbot-platform-links">
+                  <p className="text-xs text-slate-400 font-medium flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-400" /> Quick Actions
+                  </p>
+                  {[
+                    { label: 'Find Warehouses', href: '/warehouses' },
+                    { label: 'ML Recommendations', href: '/ml-recommendations' },
+                    { label: 'My Bookings', href: '/seeker-hub' },
+                  ].map((link, i) => (
+                    <a key={i} href={link.href}
+                      className="flex items-center justify-between group hover:text-blue-300 transition-colors chatbot-platform-link">
+                      <span className="text-xs">{link.label}</span>
+                      <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* ── Input ── */}
+            <div className="px-4 pb-4 pt-2 flex-shrink-0 chatbot-input-bar">
+              <div className="flex gap-2 items-center">
+                <input
                   ref={inputRef}
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  id="chatbot-input"
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   placeholder="Ask about warehouses, pricing, locations..."
-                  className="flex-1 text-sm"
-                  disabled={isLoading}
+                  disabled={isThinking}
+                  className="flex-1 text-sm px-4 py-2.5 rounded-xl outline-none transition-all duration-200 chatbot-input"
+                  aria-label="Chatbot input"
                 />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!inputMessage.trim() || isLoading}
-                  size="sm"
-                  className="px-3"
+                <button
+                  id="chatbot-send"
+                  onClick={() => sendMessage(input)}
+                  disabled={!input.trim() || isThinking}
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 chatbot-send-btn${!input.trim() || isThinking ? ' disabled' : ''}`}
+                  aria-label="Send message"
                 >
-                  <Send className="h-4 w-4" />
-                </Button>
+                  <Send className="w-4 h-4 text-white" />
+                </button>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-                AI responses may not always be accurate. Verify important information.
+              <p className="text-center text-xs text-slate-600 mt-2">
+                Powered by Groq · OpenRouter · Gemini — Live DB data
               </p>
             </div>
-          </CardContent>
+          </>
         )}
-      </Card>
+      </div>
     </div>
   );
 }

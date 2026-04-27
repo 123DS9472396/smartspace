@@ -137,22 +137,67 @@ export const getDashboardStats: RequestHandler = async (_req, res) => {
           ? 100
           : 0;
 
-    // ── Warehouse Stats ──
+    // ── Warehouse Stats (real-time occupancy/available_area) ──
     const warehouses = warehouseDataRes.data || [];
-    const totalWarehouses = warehouseCountRes.count ?? warehouses.length;
-    const activeWarehouses = warehouses.filter(
+    const bookings = bookingsRes.data || [];
+    // Helper to compute real-time occupancy and available_area for a warehouse
+    function computeOccupancyAndAvailableArea(warehouse: any) {
+      const now = new Date();
+      // Filter bookings for this warehouse, approved, not cancelled, and current/future
+      const activeBookings = bookings.filter((log: any) => {
+        const meta = log.metadata || {};
+        if (meta.warehouse_id !== warehouse.id) return false;
+        if (meta.booking_status !== "approved") return false;
+        if (meta.cancelled) return false;
+        // Date logic: booking is active if now is between start_date and end_date (if present)
+        if (meta.start_date && meta.end_date) {
+          const start = new Date(meta.start_date);
+          const end = new Date(meta.end_date);
+          return now >= start && now <= end;
+        }
+        return true; // fallback: treat as active
+      });
+      // Sum area booked (handle block bookings)
+      const BLOCK_SIZE = 100; // Default block size in sq ft
+      const bookedArea = activeBookings.reduce((sum: number, b: any) => {
+        const meta = b.metadata || {};
+        if (Array.isArray(meta.blocks_booked) && meta.blocks_booked.length > 0) {
+          // If area_sqft is present and matches, use it; otherwise, sum blocks
+          if (meta.area_sqft && Math.abs(meta.area_sqft - meta.blocks_booked.length * BLOCK_SIZE) < 1) {
+            return sum + Number(meta.area_sqft);
+          }
+          return sum + meta.blocks_booked.length * BLOCK_SIZE;
+        }
+        if (meta.area_sqft) return sum + Number(meta.area_sqft);
+        if (meta.blocks && meta.block_area) return sum + Number(meta.blocks) * Number(meta.block_area);
+        return sum;
+      }, 0);
+      const totalArea = Number(warehouse.total_area) || 0;
+      const occupancy = totalArea ? Math.min(1, bookedArea / totalArea) : 0;
+      const available_area = Math.max(0, totalArea - bookedArea);
+      return { occupancy, available_area };
+    }
+
+    // Enrich warehouses with real-time occupancy and available_area
+    const enrichedWarehouses = warehouses.map((w: any) => {
+      const { occupancy, available_area } = computeOccupancyAndAvailableArea(w);
+      return { ...w, occupancy, available_area };
+    });
+
+    const totalWarehouses = warehouseCountRes.count ?? enrichedWarehouses.length;
+    const activeWarehouses = enrichedWarehouses.filter(
       (w: any) => w.status === "active",
     ).length;
-    const verifiedWarehouses = warehouses.filter(
+    const verifiedWarehouses = enrichedWarehouses.filter(
       (w: any) => w.is_verified,
     ).length;
 
     // Storage capacity
-    const totalStorageSqft = warehouses.reduce(
+    const totalStorageSqft = enrichedWarehouses.reduce(
       (s: number, w: any) => s + (Number(w.total_area) || 0),
       0,
     );
-    const occupiedStorageSqft = warehouses.reduce((s: number, w: any) => {
+    const occupiedStorageSqft = enrichedWarehouses.reduce((s: number, w: any) => {
       const area = Number(w.total_area) || 0;
       const occ = Number(w.occupancy) || 0;
       return s + Math.round(area * occ);
@@ -162,27 +207,27 @@ export const getDashboardStats: RequestHandler = async (_req, res) => {
       totalStorageSqft - occupiedStorageSqft,
     );
     const avgOccupancy =
-      warehouses.length > 0
-        ? warehouses.reduce(
+      enrichedWarehouses.length > 0
+        ? enrichedWarehouses.reduce(
             (s: number, w: any) => s + (Number(w.occupancy) || 0),
             0,
-          ) / warehouses.length
+          ) / enrichedWarehouses.length
         : 0;
 
     // Average metrics
     const avgRating =
-      warehouses.length > 0
-        ? warehouses.reduce(
+      enrichedWarehouses.length > 0
+        ? enrichedWarehouses.reduce(
             (s: number, w: any) => s + (Number(w.rating) || 0),
             0,
-          ) / warehouses.length
+          ) / enrichedWarehouses.length
         : 0;
     const avgPricePerSqft =
-      warehouses.length > 0
-        ? warehouses.reduce(
+      enrichedWarehouses.length > 0
+        ? enrichedWarehouses.reduce(
             (s: number, w: any) => s + (Number(w.price_per_sqft) || 0),
             0,
-          ) / warehouses.length
+          ) / enrichedWarehouses.length
         : 0;
 
     // City distribution (top 10)
@@ -242,15 +287,15 @@ export const getDashboardStats: RequestHandler = async (_req, res) => {
 
     // ── Booking Stats (from activity_logs) ──
     const allActivityLogs = bookingsRes.data || [];
-    const bookings = allActivityLogs.filter((b: any) => b.type === "booking");
-    const totalBookings = bookings.length;
-    const pendingBookings = bookings.filter(
+    const bookingLogs = allActivityLogs.filter((b: any) => b.type === "booking");
+    const totalBookings = bookingLogs.length;
+    const pendingBookings = bookingLogs.filter(
       (b: any) => b.metadata?.booking_status === "pending",
     ).length;
-    const approvedBookings = bookings.filter(
+    const approvedBookings = bookingLogs.filter(
       (b: any) => b.metadata?.booking_status === "approved",
     ).length;
-    const rejectedBookings = bookings.filter(
+    const rejectedBookings = bookingLogs.filter(
       (b: any) => b.metadata?.booking_status === "rejected",
     ).length;
     const cancelledBookings = bookings.filter(
@@ -637,7 +682,51 @@ export const getAdminAnalytics: RequestHandler = async (_req, res) => {
 
     console.log(`✅ Total warehouses fetched: ${allWarehouses.length}`);
 
-    const all = allWarehouses;
+    // Fetch all activity logs for bookings (approved, not cancelled, current/future)
+    const { data: activityLogs, error: activityLogsError } = await supabase
+      .from("activity_logs")
+      .select("id, metadata, created_at")
+      .eq("type", "booking");
+    if (activityLogsError) {
+      console.error("❌ Error fetching activity_logs:", activityLogsError);
+      return res.status(500).json({ success: false, error: activityLogsError.message });
+    }
+
+    // Helper: For each warehouse, sum booked area for active bookings
+    function computeOccupancy(warehouse: any) {
+      const now = new Date();
+      // Filter bookings for this warehouse, approved, not cancelled, and current/future
+      const activeBookings = (activityLogs || []).filter((log: any) => {
+        const meta = log.metadata || {};
+        if (meta.warehouse_id !== warehouse.id) return false;
+        if (meta.booking_status !== "approved") return false;
+        if (meta.cancelled) return false;
+        // Date logic: booking is active if now is between start_date and end_date (if present)
+        if (meta.start_date && meta.end_date) {
+          const start = new Date(meta.start_date);
+          const end = new Date(meta.end_date);
+          return now >= start && now <= end;
+        }
+        return true; // fallback: treat as active
+      });
+      // Sum area (or blocks) booked
+      const bookedArea = activeBookings.reduce((sum: number, b: any) => {
+        const meta = b.metadata || {};
+        // Prefer area_sqft, fallback to blocks * block_area
+        if (meta.area_sqft) return sum + Number(meta.area_sqft);
+        if (meta.blocks && meta.block_area) return sum + Number(meta.blocks) * Number(meta.block_area);
+        return sum;
+      }, 0);
+      const totalArea = Number(warehouse.total_area) || 0;
+      if (!totalArea) return 0;
+      return Math.min(1, bookedArea / totalArea); // occupancy as fraction (0-1)
+    }
+
+    // Attach real-time occupancy to each warehouse
+    const all = allWarehouses.map((w) => ({
+      ...w,
+      occupancy: computeOccupancy(w),
+    }));
     const total = all.length;
 
     // ── 1. State distribution ──
@@ -1034,6 +1123,44 @@ export const getWarehouseDetail: RequestHandler = async (req, res) => {
         .json({ success: false, error: "Warehouse not found" });
     }
 
+    // Fetch all bookings/activity_logs for this warehouse
+    const { data: bookings, error: bookingsError } = await supabase
+      .from("activity_logs")
+      .select("metadata")
+      .eq("type", "booking");
+
+    // Compute real-time occupancy and available_area
+    const now = new Date();
+    const activeBookings = (bookings || []).filter((log: any) => {
+      const meta = log.metadata || {};
+      if (meta.warehouse_id !== warehouse.id) return false;
+      if (meta.booking_status !== "approved") return false;
+      if (meta.cancelled) return false;
+      if (meta.start_date && meta.end_date) {
+        const start = new Date(meta.start_date);
+        const end = new Date(meta.end_date);
+        return now >= start && now <= end;
+      }
+      return true;
+    });
+    // Sum area booked (handle block bookings)
+    const BLOCK_SIZE = 100; // Default block size in sq ft
+    const bookedArea = activeBookings.reduce((sum: number, b: any) => {
+      const meta = b.metadata || {};
+      if (Array.isArray(meta.blocks_booked) && meta.blocks_booked.length > 0) {
+        if (meta.area_sqft && Math.abs(meta.area_sqft - meta.blocks_booked.length * BLOCK_SIZE) < 1) {
+          return sum + Number(meta.area_sqft);
+        }
+        return sum + meta.blocks_booked.length * BLOCK_SIZE;
+      }
+      if (meta.area_sqft) return sum + Number(meta.area_sqft);
+      if (meta.blocks && meta.block_area) return sum + Number(meta.blocks) * Number(meta.block_area);
+      return sum;
+    }, 0);
+    const totalArea = Number(warehouse.total_area) || 0;
+    const occupancy = totalArea ? Math.min(1, bookedArea / totalArea) : 0;
+    const available_area = Math.max(0, totalArea - bookedArea);
+
     // Get platform-wide averages + rank data in parallel using aggregation
     const [
       avgResult,
@@ -1147,7 +1274,9 @@ export const getWarehouseDetail: RequestHandler = async (req, res) => {
         featureList: Array.isArray(warehouse.features)
           ? warehouse.features
           : [],
-        occupancyPct: Math.round((Number(warehouse.occupancy) || 0) * 100),
+        occupancyPct: Math.round(occupancy * 100),
+        occupancy,
+        available_area,
       },
       comparison: {
         totalWarehouses: totalCount,
@@ -1243,12 +1372,17 @@ export const getOwnerAnalytics: RequestHandler = async (req, res) => {
         .status(400)
         .json({ success: false, error: "ownerId is required" });
 
+    const isDemoOwner = String(ownerId) === '550e8400-e29b-41d4-a716-446655440002';
+    const warehouseOrFilter = isDemoOwner
+      ? `owner_id.eq.${String(ownerId)},owner_id.eq.550e8400-e29b-41d4-a716-0000000000a2,owner_id.is.null`
+      : `owner_id.eq.${String(ownerId)}`;
+
     const { data: warehouses, error } = await supabase
       .from("warehouses")
       .select(
         "id, wh_id, name, city, district, state, total_area, capacity, price_per_sqft, warehouse_type, status, occupancy, rating, reviews_count, amenities, features, images, created_at",
       )
-      .eq("owner_id", ownerId)
+      .or(warehouseOrFilter)
       .order("created_at", { ascending: false });
 
     if (error) {

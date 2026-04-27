@@ -1,4 +1,5 @@
 import React from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Info, CheckCircle2, XCircle } from "lucide-react";
@@ -7,6 +8,7 @@ import { ExternalLink, Info, CheckCircle2, XCircle } from "lucide-react";
  * Component to show AI service status and guide users on configuration
  */
 export default function GeminiApiKeySetup() {
+  const { profile } = useAuth();
   const openRouterKey = import.meta.env.VITE_OPENROUTER_API_KEY;
   const groqKey = import.meta.env.VITE_GROQ_API_KEY;
   const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -14,7 +16,8 @@ export default function GeminiApiKeySetup() {
 
   const hasAnyKey = openRouterKey || groqKey || geminiKey || cloudflareKey;
 
-  if (hasAnyKey) {
+  // Only show the AI banner for non-seeker users
+  if (hasAnyKey && profile?.user_type !== 'seeker') {
     // Show success message with configured providers
     return (
       <Alert className="mb-4 bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">

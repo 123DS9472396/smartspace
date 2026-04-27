@@ -35,39 +35,77 @@ export const bookWarehouseBlocks: RequestHandler = async (req, res) => {
 
         // Calculate total area from blocks (default 100 sq ft per block if not specified)
         const BLOCK_AREA_SQFT = 100;
-        const totalArea = blocks.reduce((sum: number, block: any) => sum + (block.area || BLOCK_AREA_SQFT), 0);
+        const totalArea = (blocks || []).reduce((sum: number, block: any) => sum + (block.area || BLOCK_AREA_SQFT), 0);
 
-        // Fetch warehouse info - try main table first, then submissions
-        // Warehouse ID could be wh_id (LIC007986) or UUID id
+        // --- FCFS Validation: Check for Overlapping Bookings ---
+        const reqStart = new Date(start_date);
+        const reqEnd = new Date(end_date);
+        
+        // Normalize requested blocks for easy checking (handle objects or strings)
+        const requestedBlockIds = (blocks || []).map((b: any) => {
+            if (typeof b === 'string') return b;
+            return String(b.id || `block_${b.block_number}`);
+        });
+
+        const { data: existingBookings, error: fetchErr } = await supabase
+            .from('activity_logs')
+            .select('metadata')
+            .eq('type', 'booking')
+            .in('metadata->>booking_status', ['pending', 'approved']);
+
+        if (!fetchErr && existingBookings) {
+            // Filter by warehouse_id in JS since it's inside metadata jsonb
+            const relevantBookings = existingBookings.filter((b: any) => b.metadata?.warehouse_id === warehouse_id);
+            
+            for (const b of relevantBookings) {
+                const bStart = new Date(b.metadata.start_date);
+                const bEnd = new Date(b.metadata.end_date);
+                
+                // Check if dates overlap
+                const datesOverlap = reqStart <= bEnd && reqEnd >= bStart;
+                if (!datesOverlap) continue;
+
+                // Dates overlap! Check if any specific requested blocks overlap
+                const bookedBlocks = (b.metadata.blocks_booked || []).map((ob: any) => {
+                    if (typeof ob === 'string') return ob;
+                    return String(ob.id || `block_${ob.block_number}`);
+                });
+
+                const blockConflict = requestedBlockIds.some((rb: string) => bookedBlocks.includes(rb));
+                if (blockConflict) {
+                    return res.status(409).json({
+                        success: false,
+                        error: 'Slot conflict: One or more requested blocks are already booked or pending for these dates. Please choose different dates or blocks.',
+                        conflictDetails: 'FCFS Lock triggered'
+                    });
+                }
+            }
+        }
+        // --- End FCFS Validation ---
+
+        // -------------------------------------------------------------------
+        // FIX #1 + #2: Warehouse lookup — try BOTH id (UUID) AND wh_id in one
+        // query so CSV-imported warehouses (LIC007986 etc.) are always found.
+        // -------------------------------------------------------------------
         let warehouse: any = null;
         let warehouseOwnerId: string | null = null;
 
-        // Try by wh_id first (for LIC format IDs)
-        let { data: mainWarehouse } = await supabase
+        // Single combined query: match either UUID id OR string wh_id
+        const { data: mainWarehouse } = await supabase
             .from('warehouses')
-            .select('name, address, city, state, owner_id')
-            .eq('wh_id', warehouse_id)
+            .select('id, wh_id, name, address, city, state, owner_id, total_area, area_sqft')
+            .or(`id.eq.${warehouse_id},wh_id.eq.${warehouse_id}`)
             .maybeSingle();
-
-        // If not found, try by id (UUID format)
-        if (!mainWarehouse) {
-            const { data: byId } = await supabase
-                .from('warehouses')
-                .select('name, address, city, state, owner_id')
-                .eq('id', warehouse_id)
-                .maybeSingle();
-            mainWarehouse = byId;
-        }
 
         if (mainWarehouse) {
             warehouse = mainWarehouse;
             warehouseOwnerId = mainWarehouse.owner_id || null;
-            console.log(`✅ Found warehouse in main table, owner_id: ${warehouseOwnerId}`);
+            console.log(`✅ Found warehouse in main table: ${mainWarehouse.name} | owner_id: ${warehouseOwnerId}`);
         } else {
-            // Try warehouse_submissions for approved submissions (by id which is the submission ID)
+            // Try warehouse_submissions for approved submissions (by UUID id)
             const { data: submissionWarehouse } = await supabase
                 .from('warehouse_submissions')
-                .select('name, address, city, state, owner_id')
+                .select('id, name, address, city, state, owner_id, total_area')
                 .eq('id', warehouse_id)
                 .eq('status', 'approved')
                 .maybeSingle();
@@ -75,24 +113,59 @@ export const bookWarehouseBlocks: RequestHandler = async (req, res) => {
             if (submissionWarehouse) {
                 warehouse = submissionWarehouse;
                 warehouseOwnerId = submissionWarehouse.owner_id || null;
-                console.log(`✅ Found warehouse in submissions, owner_id: ${warehouseOwnerId}`);
+                console.log(`✅ Found warehouse in submissions: ${submissionWarehouse.name} | owner_id: ${warehouseOwnerId}`);
             }
         }
 
         if (!warehouse) {
-            console.log(`⚠️ Warehouse ${warehouse_id} not found in database, using provided details`);
+            console.log(`⚠️ Warehouse ${warehouse_id} not found in database, using provided details from client`);
+        }
+
+        // -------------------------------------------------------------------
+        // FIX #4: If owner_id is NULL (CSV-seeded warehouses), mark as
+        // 'unassigned' so admin can still see the booking. Never silently
+        // drop the booking just because there's no owner.
+        // -------------------------------------------------------------------
+        if (!warehouseOwnerId) {
+            console.log(`ℹ️ No owner_id for warehouse ${warehouse_id} — booking will be admin-managed`);
         }
 
         // Create booking activity log with 'pending' status for admin review
-        const { data: booking, error: bookingError } = await supabase
-            .from('activity_logs')
-            .insert({
-                seeker_id,
+            // Utility: Ensure activity_logs is always updated for booking events
+            const upsertActivityLog = async ({
+                bookingId,
+                seekerId,
+                type = 'booking',
+                description,
+                metadata
+            }) => {
+                if (!bookingId) {
+                    // Insert new log
+                    return await supabase
+                        .from('activity_logs')
+                        .insert({ seeker_id: seekerId, type, description, metadata })
+                        .select()
+                        .single();
+                } else {
+                    // Update existing log
+                    return await supabase
+                        .from('activity_logs')
+                        .update({ description, metadata })
+                        .eq('id', bookingId)
+                        .select()
+                        .single();
+                }
+            };
+
+            // Create booking activity log with 'pending' status for admin review (robust upsert)
+            const { data: booking, error: bookingError } = await upsertActivityLog({
+                bookingId: null,
+                seekerId: seeker_id,
                 type: 'booking',
                 description: `Block booking for ${warehouse?.name || 'Warehouse'} - ${blocks.length} blocks (${totalArea} sq ft)`,
                 metadata: {
                     warehouse_id,
-                    warehouse_owner_id: warehouseOwnerId, // Store owner ID for notifications
+                    warehouse_owner_id: warehouseOwnerId,     // null is fine — admin sees it
                     warehouse_name: warehouse?.name || 'Unknown Warehouse',
                     warehouse_address: warehouse?.address || '',
                     warehouse_city: warehouse?.city || '',
@@ -105,13 +178,10 @@ export const bookWarehouseBlocks: RequestHandler = async (req, res) => {
                     payment_method,
                     goods_type,
                     customer_details,
-                    booking_status: 'pending',  // Changed from 'confirmed' to 'pending' for admin review
+                    booking_status: 'pending',
                     booking_type: 'block_booking'
                 }
-            })
-            .select()
-            .single();
-
+            });
         if (bookingError) {
             console.error('❌ Error creating booking:', bookingError);
             return res.status(500).json({
@@ -160,72 +230,130 @@ export const getAvailableBlocks: RequestHandler = async (req, res) => {
             });
         }
 
-        console.log(`🔍 Fetching available blocks for warehouse ${warehouse_id}`);
+        const wid = String(warehouse_id);
+        console.log(`🔍 Fetching available blocks for warehouse ${wid}`);
 
-        // Get all approved bookings for this warehouse to find occupied blocks
+        // Get all APPROVED bookings for this warehouse to find occupied blocks
+        // Match by BOTH warehouse_id stored in metadata (UUID or wh_id)
         const { data: bookings, error } = await supabase
             .from('activity_logs')
             .select('metadata')
             .eq('type', 'booking')
-            .filter('metadata->>warehouse_id', 'eq', warehouse_id)
             .filter('metadata->>booking_status', 'eq', 'approved');
 
         if (error) {
             console.error('Error fetching bookings:', error);
         }
 
-        // Extract booked blocks — blocks_booked is [{id:'block_1', block_number:1, area:100}...]
+        // Filter client-side so we catch both UUID and wh_id formats stored in metadata
+        const relevantBookings = (bookings || []).filter(
+            (b: any) => b.metadata?.warehouse_id === wid
+        );
+
+        // Extract booked block numbers
         const bookedBlocks = new Set<string>();
         const bookedBlockNumbers = new Set<number>();
-        bookings?.forEach(booking => {
-            const blocks = booking.metadata?.blocks_booked || [];
-            blocks.forEach((block: any) => {
-                if (block.id) bookedBlocks.add(block.id);
-                if (block.block_number) bookedBlockNumbers.add(Number(block.block_number));
+        relevantBookings.forEach((booking: any) => {
+            const blks = booking.metadata?.blocks_booked || [];
+            blks.forEach((block: any) => {
+                if (block.id) bookedBlocks.add(String(block.id));
+                if (block.block_number != null) bookedBlockNumbers.add(Number(block.block_number));
             });
         });
 
-        // Fetch warehouse to get total blocks/grid config
+        // -------------------------------------------------------------------
+        // FIX #1 + #2: Fetch warehouse using BOTH id AND wh_id columns.
+        // Also select total_area (CSV warehouses) with area_sqft as fallback.
+        // -------------------------------------------------------------------
         const { data: warehouse } = await supabase
             .from('warehouses')
-            .select('area_sqft, metadata')
-            .eq('id', warehouse_id)
-            .single();
+            .select('id, wh_id, total_area, area_sqft, total_blocks, blocks, metadata')
+            .or(`id.eq.${wid},wh_id.eq.${wid}`)
+            .maybeSingle();
 
-        // Generate grid layout (default 4x5 grid = 20 blocks)
-        const gridConfig = warehouse?.metadata?.grid_config || { rows: 4, cols: 5 };
-        const totalArea = warehouse?.area_sqft || 10000;
-        const blockArea = Math.floor(totalArea / (gridConfig.rows * gridConfig.cols));
+        // If not found in main table, try submissions
+        let warehouseData: any = warehouse;
+        if (!warehouseData) {
+            const { data: sub } = await supabase
+                .from('warehouse_submissions')
+                .select('id, total_area, total_blocks, blocks, metadata')
+                .eq('id', wid)
+                .eq('status', 'approved')
+                .maybeSingle();
+            warehouseData = sub || null;
+        }
 
-        const blocks = [];
-        for (let row = 0; row < gridConfig.rows; row++) {
-            for (let col = 0; col < gridConfig.cols; col++) {
-                const blockId = `${row}-${col}`;
-                // Sequential block number (1-based) — matches client-side block_number
-                const blockNumber = row * gridConfig.cols + col + 1;
-                const isBooked = bookedBlocks.has(blockId) ||
-                    bookedBlockNumbers.has(blockNumber) ||
-                    bookedBlocks.has(`block_${blockNumber}`);
-                blocks.push({
+        // -------------------------------------------------------------------
+        // FIX #3 (partial): If warehouse has a populated blocks[] array, use
+        // it directly and mark the right ones as booked. If not (CSV warehouses),
+        // generate a virtual grid dynamically — no need to mutate the DB.
+        // -------------------------------------------------------------------
+        const hasRealBlocks = warehouseData &&
+            Array.isArray(warehouseData.blocks) &&
+            warehouseData.blocks.length > 0;
+
+        let blocks: any[] = [];
+
+        if (hasRealBlocks) {
+            // Owner-submitted warehouses: use the stored blocks array
+            blocks = warehouseData.blocks.map((block: any) => {
+                const blockId = String(block.id || `block_${block.block_number}`);
+                const blockNum = Number(block.block_number || 0);
+                const isBooked =
+                    block.status === 'occupied' ||
+                    block.status === 'reserved' ||
+                    bookedBlocks.has(blockId) ||
+                    bookedBlockNumbers.has(blockNum);
+                return {
                     id: blockId,
-                    block_number: blockNumber,
-                    row,
-                    col,
-                    area: blockArea,
+                    block_number: blockNum,
+                    row: block.row ?? 0,
+                    col: block.col ?? 0,
+                    area: block.area_sqft || block.area || 100,
                     available: !isBooked,
-                    label: `Block ${String.fromCharCode(65 + row)}${col + 1}`
-                });
+                    label: block.label || `Block ${blockNum}`
+                };
+            });
+        } else {
+            // CSV-seeded warehouses: generate virtual grid from area
+            const gridConfig = warehouseData?.metadata?.grid_config || { rows: 4, cols: 5 };
+            // Accept total_area (CSV) OR area_sqft (legacy), fallback 10000
+            const totalArea =
+                Number(warehouseData?.total_area || 0) ||
+                Number(warehouseData?.area_sqft || 0) ||
+                10000;
+            const blockArea = Math.floor(totalArea / (gridConfig.rows * gridConfig.cols));
+
+            for (let row = 0; row < gridConfig.rows; row++) {
+                for (let col = 0; col < gridConfig.cols; col++) {
+                    const blockId = `${row}-${col}`;
+                    const blockNumber = row * gridConfig.cols + col + 1;
+                    const isBooked =
+                        bookedBlocks.has(blockId) ||
+                        bookedBlockNumbers.has(blockNumber) ||
+                        bookedBlocks.has(`block_${blockNumber}`);
+                    blocks.push({
+                        id: blockId,
+                        block_number: blockNumber,
+                        row,
+                        col,
+                        area: blockArea,
+                        available: !isBooked,
+                        label: `Block ${String.fromCharCode(65 + row)}${col + 1}`
+                    });
+                }
             }
         }
 
-        console.log(`✅ Found ${blocks.filter(b => b.available).length} available blocks`);
+        const availableCount = blocks.filter(b => b.available).length;
+        console.log(`✅ Found ${availableCount} available blocks (${hasRealBlocks ? 'real' : 'virtual'} grid)`);
 
         return res.json({
             success: true,
             blocks,
-            grid_config: gridConfig,
+            grid_config: warehouseData?.metadata?.grid_config || { rows: 4, cols: 5 },
             total_blocks: blocks.length,
-            available_blocks: blocks.filter(b => b.available).length,
+            available_blocks: availableCount,
             booked_block_numbers: Array.from(bookedBlockNumbers)
         });
 

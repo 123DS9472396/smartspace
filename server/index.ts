@@ -9,7 +9,7 @@ import recommendPriceRouter from "./routes/recommend-price";
 import productPricingRouter from "./routes/product-pricing";
 import citiesRouter from "./routes/cities";
 import { getAdminWarehouses, getAdminUsers } from "./routes/admin-warehouses";
-import { getOwnerBookings, respondToBooking } from "./routes/owner-bookings";
+import { getOwnerBookings, respondToBooking, getSeekerTrustProfile } from "./routes/owner-bookings";
 import {
   createWarehouseSubmission,
   getOwnerSubmissions,
@@ -18,6 +18,7 @@ import {
 import { getOwnerAnalytics, getAdminAnalytics, getWarehouseList, getWarehouseDetail, getAnalyticsFilters, getDashboardStats } from "./routes/analytics";
 
 import { supabase } from "./lib/supabaseClient";
+import smartBookingRouter from "./routes/smartBooking";
 
 // Admin booking handlers defined inline
 const getAdminBookings: RequestHandler = async (req, res) => {
@@ -35,20 +36,51 @@ const getAdminBookings: RequestHandler = async (req, res) => {
       return res.json({ success: true, bookings: [], total: 0, message: 'No bookings found or table does not exist' });
     }
 
-    const bookings = bookingLogs?.map(log => ({
-      id: log.id,
-      seeker_name: log.metadata?.customer_details?.name || 'Unknown',
-      seeker_email: log.metadata?.customer_details?.email || 'N/A',
-      warehouse_name: log.metadata?.warehouse_name || 'Unknown Warehouse',
-      warehouse_location: `${log.metadata?.warehouse_city || ''}, ${log.metadata?.warehouse_state || ''}`,
-      start_date: log.metadata?.start_date,
-      end_date: log.metadata?.end_date,
-      total_amount: log.metadata?.total_amount || 0,
-      area_sqft: log.metadata?.area_sqft,
-      status: log.metadata?.booking_status || 'pending',
-      created_at: log.created_at,
-      booking_notes: log.description
-    })) || [];
+    // Collect all warehouse IDs that need a live name lookup (pre-fix bookings
+    // stored 'Unknown Warehouse' because the CSV lookup was failing at booking time)
+    const logsNeedingNameLookup = (bookingLogs || []).filter(
+      log => (!log.metadata?.warehouse_name || log.metadata.warehouse_name === 'Unknown Warehouse') && log.metadata?.warehouse_id
+    );
+
+    // Batch-fetch names for those warehouses (once, not per-row)
+    const warehouseNameCache: Record<string, string> = {};
+    if (logsNeedingNameLookup.length > 0) {
+      const uniqueIds = [...new Set(logsNeedingNameLookup.map(l => l.metadata.warehouse_id))];
+      // Build a combined OR filter for both id AND wh_id
+      const orFilter = uniqueIds.map(id => `id.eq.${id},wh_id.eq.${id}`).join(',');
+      const { data: foundWarehouses } = await supabase
+        .from('warehouses')
+        .select('id, wh_id, name, city, state')
+        .or(orFilter);
+      (foundWarehouses || []).forEach(w => {
+        if (w.id) warehouseNameCache[w.id] = w.name;
+        if (w.wh_id) warehouseNameCache[w.wh_id] = w.name;
+      });
+    }
+
+    const bookings = (bookingLogs || []).map(log => {
+      const warehouseId = log.metadata?.warehouse_id || '';
+      const storedName = log.metadata?.warehouse_name;
+      const resolvedName = (storedName && storedName !== 'Unknown Warehouse')
+        ? storedName
+        : (warehouseNameCache[warehouseId] || 'Unknown Warehouse');
+
+      return {
+        id: log.id,
+        seeker_name: log.metadata?.customer_details?.name || 'Unknown',
+        seeker_email: log.metadata?.customer_details?.email || 'N/A',
+        warehouse_name: resolvedName,
+        warehouse_id: warehouseId,
+        warehouse_location: `${log.metadata?.warehouse_city || ''}, ${log.metadata?.warehouse_state || ''}`,
+        start_date: log.metadata?.start_date,
+        end_date: log.metadata?.end_date,
+        total_amount: log.metadata?.total_amount || 0,
+        area_sqft: log.metadata?.area_sqft,
+        status: log.metadata?.booking_status || 'pending',
+        created_at: log.created_at,
+        booking_notes: log.description
+      };
+    });
 
     console.log(`✅ Found ${bookings.length} bookings`);
     return res.json({ success: true, bookings, total: bookings.length });
@@ -141,66 +173,80 @@ const updateBookingStatus: RequestHandler = async (req, res) => {
       
       // Update block status to 'occupied' for approved bookings
       if (blocksBooked.length > 0) {
-        // Get current warehouse data
+        // -------------------------------------------------------------------
+        // FIX #2 + #3: Use a single combined OR query to find warehouse by
+        // EITHER UUID id OR string wh_id (LIC007986 format). Then ONLY mutate
+        // the blocks array if the warehouse actually has one — CSV-seeded rows
+        // don't have a blocks column, so we skip that step for them (the
+        // availability is computed dynamically from activity_logs instead).
+        // -------------------------------------------------------------------
         let warehouseData: any = null;
         let warehouseTable = 'warehouses';
-        
-        // Try by wh_id first (for LIC format IDs like LIC007986)
-        let { data: mainWarehouse } = await supabase
+        let matchedByUUID = false;
+
+        const { data: mainWarehouse } = await supabase
           .from('warehouses')
-          .select('*')
-          .eq('wh_id', warehouseId)
+          .select('id, wh_id, blocks, total_blocks, total_area')
+          .or(`id.eq.${warehouseId},wh_id.eq.${warehouseId}`)
           .maybeSingle();
-        
-        // If not found, try by id (UUID format)
-        if (!mainWarehouse) {
-          const { data: byId } = await supabase
-            .from('warehouses')
-            .select('*')
-            .eq('id', warehouseId)
-            .maybeSingle();
-          mainWarehouse = byId;
-        }
-        
+
         if (mainWarehouse) {
           warehouseData = mainWarehouse;
-          console.log(`✅ Found warehouse in main table for block update`);
+          // Determine which column was matched to use in the UPDATE
+          matchedByUUID = mainWarehouse.id === warehouseId;
+          console.log(`✅ Found warehouse in main table for block update (matched by ${matchedByUUID ? 'UUID id' : 'wh_id'})`);
         } else {
           const { data: submissionWarehouse } = await supabase
             .from('warehouse_submissions')
-            .select('*')
+            .select('id, blocks, total_blocks, total_area')
             .eq('id', warehouseId)
             .eq('status', 'approved')
             .maybeSingle();
-          
+
           if (submissionWarehouse) {
             warehouseData = submissionWarehouse;
             warehouseTable = 'warehouse_submissions';
+            matchedByUUID = true;
             console.log(`✅ Found warehouse in submissions for block update`);
           }
         }
 
-        // Update blocks to occupied status
-        if (warehouseData && warehouseData.blocks) {
+        // Only mutate blocks if the warehouse actually has a blocks JSON array.
+        // CSV-seeded warehouses have blocks = null — availability is computed
+        // dynamically from activity_logs so no DB mutation is needed.
+        const hasBlocksArray = warehouseData &&
+          Array.isArray(warehouseData.blocks) &&
+          warehouseData.blocks.length > 0;
+
+        if (hasBlocksArray) {
+          // Normalize block IDs from booked list (can be string ids or objects)
+          const bookedBlockIds = new Set<string>(
+            blocksBooked.map((b: any) => {
+              if (typeof b === 'string') return b;
+              if (b?.id) return String(b.id);
+              if (b?.block_number != null) return `block_${b.block_number}`;
+              return '';
+            }).filter(Boolean)
+          );
+
           const updatedBlocks = warehouseData.blocks.map((block: any) => {
-            if (blocksBooked.includes(block.id)) {
-              return {
-                ...block,
-                status: 'occupied',
-                booking_id: bookingId,
-                booked_by: existing.metadata?.customer_details?.email || 'Unknown',
-                booking_dates: {
-                  start: existing.metadata?.start_date,
-                  end: existing.metadata?.end_date
-                }
-              };
-            }
-            return block;
+            const blockId = String(block.id || `block_${block.block_number}`);
+            if (!bookedBlockIds.has(blockId)) return block;
+            return {
+              ...block,
+              status: 'occupied',
+              booking_id: bookingId,
+              booked_by: existing.metadata?.customer_details?.email || 'Unknown',
+              booking_dates: {
+                start: existing.metadata?.start_date,
+                end: existing.metadata?.end_date
+              }
+            };
           });
 
-          // Use wh_id for main warehouses table, id for submissions
-          const idColumn = warehouseTable === 'warehouses' ? 'wh_id' : 'id';
-          
+          // Use correct column for the WHERE clause
+          const idColumn = warehouseTable === 'warehouse_submissions' ? 'id' : (matchedByUUID ? 'id' : 'wh_id');
+
           const { error: blockUpdateError } = await supabase
             .from(warehouseTable)
             .update({ blocks: updatedBlocks })
@@ -209,34 +255,25 @@ const updateBookingStatus: RequestHandler = async (req, res) => {
           if (blockUpdateError) {
             console.error(`⚠️ Failed to update block status:`, blockUpdateError);
           } else {
-            console.log(`✅ Updated ${blocksBooked.length} blocks to occupied status for ${warehouseId}`);
+            console.log(`✅ Updated ${bookedBlockIds.size} blocks to occupied status for ${warehouseId}`);
           }
+        } else {
+          console.log(`ℹ️ Warehouse ${warehouseId} has no blocks array (CSV-seeded) — skipping block mutation, availability computed dynamically`);
         }
       }
       
       // Try to find the warehouse owner - first check if stored in booking metadata
       let ownerId = existing.metadata?.warehouse_owner_id || null;
       
-      // If not in metadata, try to find from warehouse tables
+      // If not in metadata, try to find from warehouse tables using dual-column OR query
       if (!ownerId) {
         console.log(`🔍 Looking up owner for warehouse: ${warehouseId}`);
         
-        // Try by wh_id first (for LIC format IDs)
-        let { data: mainWarehouse } = await supabase
+        const { data: mainWarehouse } = await supabase
           .from('warehouses')
-          .select('owner_id, wh_id')
-          .eq('wh_id', warehouseId)
+          .select('owner_id, wh_id, id')
+          .or(`id.eq.${warehouseId},wh_id.eq.${warehouseId}`)
           .maybeSingle();
-        
-        // If not found, try by id (UUID format)
-        if (!mainWarehouse) {
-          const { data: byId } = await supabase
-            .from('warehouses')
-            .select('owner_id, wh_id')
-            .eq('id', warehouseId)
-            .maybeSingle();
-          mainWarehouse = byId;
-        }
       
         if (mainWarehouse?.owner_id) {
           ownerId = mainWarehouse.owner_id;
@@ -267,7 +304,7 @@ const updateBookingStatus: RequestHandler = async (req, res) => {
 
         const { error: notifError } = await supabase.from('activity_logs').insert({
           seeker_id: ownerId, // owner receives the notification (seeker_id is user_id here)
-          type: 'notification',
+          type: 'inquiry', // Using inquiry to avoid activity_logs_type_check violation
           description: notificationDescription,
           metadata: {
             notification_type: 'booking_approved',
@@ -314,6 +351,8 @@ export function createServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Smart Booking (NLP) API
+  app.use(smartBookingRouter);
   // API routes
   app.get("/api/ping", (_req, res) => {
     res.json({ message: process.env.PING_MESSAGE ?? "ping" });
@@ -337,6 +376,7 @@ export function createServer() {
   // Owner booking routes
   app.get("/api/owner/bookings", getOwnerBookings);
   app.post("/api/owner/bookings/respond", respondToBooking);
+  app.get("/api/owner/seeker-trust/:seeker_id", getSeekerTrustProfile);
 
   // Analytics routes
   app.get("/api/analytics/admin", getAdminAnalytics);

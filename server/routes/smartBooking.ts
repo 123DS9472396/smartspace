@@ -95,10 +95,10 @@ function scoreWarehouse(w: any, req: ReturnType<typeof extractRequirements>) {
       score += 30; reasons.push(`In ${w.city}`);
     }
   }
-  if (w.total_area) {
-    const area = Number(w.total_area);
-    if (area >= req.requiredSpace) { score += 15; reasons.push(`${area} sq ft available`); }
-    else if (area / req.requiredSpace >= 0.7) score += 5;
+  const available = Number(w.available_area || w.total_area || 0);
+  if (available) {
+    if (available >= req.requiredSpace) { score += 15; reasons.push(`${available} sq ft available`); }
+    else if (available / req.requiredSpace >= 0.7) score += 5;
   }
   if (req.maxBudget && w.price_per_sqft) {
     if (Number(w.price_per_sqft) <= req.maxBudget) { score += 10; reasons.push(`Rs.${w.price_per_sqft}/sqft fits budget`); }
@@ -185,7 +185,7 @@ Return JSON:
       console.log('⚠️ Groq unavailable, using pattern extraction:', requirements);
     }
 
-    // Step 2: Query database
+    // Step 2: Query database (fetch all candidate warehouses, filter in-memory by real-time available area)
     let dbQuery = supabase.from('warehouses').select('*').eq('status', 'active');
     if (requirements.location) {
       const baseCity = requirements.location.split(' ')[0];
@@ -195,22 +195,55 @@ Return JSON:
     }
     if (requirements.warehouseType) dbQuery = dbQuery.ilike('warehouse_type', `%${requirements.warehouseType}%`);
     if (requirements.maxBudget) dbQuery = dbQuery.lte('price_per_sqft', requirements.maxBudget * 2);
-    let { data: warehouses, error: dbError } = await dbQuery.limit(50);
+    let { data: warehouses, error: dbError } = await dbQuery.limit(100); // fetch more for in-memory filtering
     if (dbError) {
       console.error('Database error:', dbError);
       return res.status(500).json({ success: false, error: 'Database query failed', details: dbError });
     }
     if ((!warehouses || warehouses.length === 0) && requirements.location) {
       console.log('No location match, fetching all active warehouses');
-      const { data: all } = await supabase.from('warehouses').select('*').eq('status', 'active').limit(50);
+      const { data: all } = await supabase.from('warehouses').select('*').eq('status', 'active').limit(100);
       warehouses = all || [];
+    }
+
+    // Step 2b: For each warehouse, compute real-time available_area from bookings
+    // Get all warehouse IDs
+    const warehouseIds = (warehouses || []).map((w: any) => w.id);
+    // Fetch all active bookings for these warehouses
+    const { data: bookings } = await supabase
+      .from('activity_logs')
+      .select('metadata')
+      .in('metadata->>warehouse_id', warehouseIds)
+      .eq('type', 'booking')
+      .in('metadata->>booking_status', ['approved', 'active', 'confirmed']);
+
+    // Map warehouseId => total booked area
+    const bookedAreaMap: Record<string, number> = {};
+    for (const b of bookings || []) {
+      const meta = b.metadata || {};
+      const wid = meta.warehouse_id;
+      const area = Number(meta.area_sqft) || 0;
+      if (!wid) continue;
+      bookedAreaMap[wid] = (bookedAreaMap[wid] || 0) + area;
+    }
+
+    // Attach real-time available_area to each warehouse
+    warehouses = (warehouses || []).map((w: any) => {
+      const total = Number(w.total_area) || 0;
+      const booked = bookedAreaMap[w.id] || 0;
+      return { ...w, available_area: Math.max(0, total - booked) };
+    });
+
+    // Now filter warehouses by requiredSpace
+    if (requirements.requiredSpace) {
+      warehouses = warehouses.filter((w: any) => w.available_area >= requirements.requiredSpace);
     }
 
     // Step 3: Local scoring
     const scored = (warehouses || [])
       .map((w: any) => {
         const { score, reason } = scoreWarehouse(w, requirements);
-        return { ...w, _score: score, _reason: reason };
+        return { ...w, _score: score, _reason: reason, _available_area: w.available_area || w.total_area || 0 };
       })
       .sort((a: any, b: any) => b._score - a._score);
 
@@ -219,12 +252,12 @@ Return JSON:
       id: w.id, rank: i + 1, score: w._score, reason: w._reason
     }));
     let summary = scored.length > 0
-      ? `Best match: ${scored[0].name} in ${scored[0].city} — ${scored[0].total_area} sq ft @ ₹${scored[0].price_per_sqft}/sqft`
+      ? `Best match: ${scored[0].name} in ${scored[0].city} — ${scored[0]._available_area} sq ft available @ ₹${scored[0].price_per_sqft}/sqft`
       : `No warehouses found for "${requirements.location || query}".`;
 
     if (scored.length > 0) {
       const top10 = scored.slice(0, 10).map((w: any, i: number) =>
-        `${i + 1}. ID:${w.id} | ${w.name} | ${w.city} | ${w.total_area} sqft | Rs.${w.price_per_sqft}/sqft | Type:${w.warehouse_type || 'General'}`
+        `${i + 1}. ID:${w.id} | ${w.name} | ${w.city} | ${w._available_area} sqft available | Rs.${w.price_per_sqft}/sqft | Type:${w.warehouse_type || 'General'}`
       ).join('\n');
 
       const groqRanking = await callGroq(

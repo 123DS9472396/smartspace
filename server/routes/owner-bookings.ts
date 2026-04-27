@@ -120,12 +120,18 @@ export const getOwnerBookings: RequestHandler = async (req, res) => {
     return res.status(400).json({ success: false, error: "Missing owner_id" });
 
   try {
+    // If demo owner, include the CSV unassigned warehouses natively
+    const isDemoOwner = String(owner_id) === '550e8400-e29b-41d4-a716-446655440002';
+    const warehouseOrFilter = isDemoOwner
+      ? `owner_id.eq.${String(owner_id)},owner_id.eq.550e8400-e29b-41d4-a716-0000000000a2,owner_id.is.null`
+      : `owner_id.eq.${String(owner_id)}`;
+
     // Find all warehouse IDs owned by this user (warehouses + approved submissions)
     const [{ data: warehouses }, { data: submissions }] = await Promise.all([
       supabase
         .from("warehouses")
         .select("id, wh_id, name")
-        .eq("owner_id", String(owner_id)),
+        .or(warehouseOrFilter),
       supabase
         .from("warehouse_submissions")
         .select("id, name")
@@ -160,16 +166,38 @@ export const getOwnerBookings: RequestHandler = async (req, res) => {
 
     const ownerBookings = (allBookings || []).filter((b) => {
       const wid = String(b.metadata?.warehouse_id || "");
-      return wid && warehouseIdSet.has(wid);
+      const matchedBySet = wid && warehouseIdSet.has(wid);
+      const matchedByOwnerId = b.metadata?.warehouse_owner_id === owner_id || b.metadata?.warehouse_owner_id === String(owner_id);
+      return matchedBySet || matchedByOwnerId;
     });
 
-    const formatted = ownerBookings.map((b) => ({
-      id: b.id,
-      created_at: b.created_at,
-      seeker_id: b.seeker_id,
-      booking_status: b.metadata?.booking_status || "pending",
-      warehouse_id: b.metadata?.warehouse_id || "",
-      warehouse_name: b.metadata?.warehouse_name || "Warehouse",
+    // Build a map of warehouse IDs to names for resolving "Unknown Warehouse"
+    const warehouseNameMap = new Map<string, string>();
+    (warehouses || []).forEach((w) => {
+      if (w.id) warehouseNameMap.set(String(w.id), w.name);
+      if (w.wh_id) warehouseNameMap.set(String(w.wh_id), w.name);
+    });
+    (submissions || []).forEach((s) => {
+      if (s.id) warehouseNameMap.set(String(s.id), s.name);
+    });
+
+    const formatted = ownerBookings.map((b) => {
+      const wid = String(b.metadata?.warehouse_id || "");
+      let resolvedName = warehouseNameMap.get(wid);
+      const metaName = b.metadata?.warehouse_name;
+      
+      if (!resolvedName && metaName && metaName !== "Unknown Warehouse") {
+        resolvedName = metaName;
+      }
+      if (!resolvedName) resolvedName = "Unknown Warehouse";
+
+      return {
+        id: b.id,
+        created_at: b.created_at,
+        seeker_id: b.seeker_id,
+        booking_status: b.metadata?.booking_status || "pending",
+        warehouse_id: wid,
+        warehouse_name: resolvedName,
       warehouse_address: b.metadata?.warehouse_address || "",
       warehouse_city: b.metadata?.warehouse_city || "",
       warehouse_state: b.metadata?.warehouse_state || "",
@@ -186,7 +214,8 @@ export const getOwnerBookings: RequestHandler = async (req, res) => {
       booking_type: b.metadata?.booking_type || "standard",
       admin_notes: b.metadata?.admin_notes || "",
       owner_action: b.metadata?.owner_action || null,
-    }));
+    };
+  });
 
     return res.json({ success: true, bookings: formatted });
   } catch (err) {
@@ -203,7 +232,7 @@ export const getOwnerBookings: RequestHandler = async (req, res) => {
  * Body: { booking_id, owner_id, action: 'approve' | 'reject', notes? }
  */
 export const respondToBooking: RequestHandler = async (req, res) => {
-  const { booking_id, owner_id, action, notes } = req.body;
+  const { booking_id, owner_id, action, notes, rejection_reason } = req.body;
 
   if (!booking_id || !owner_id || !["approve", "reject"].includes(action)) {
     return res
@@ -246,23 +275,39 @@ export const respondToBooking: RequestHandler = async (req, res) => {
         .json({ success: false, error: "Booking missing warehouse_id" });
     }
 
-    // Verify that this owner owns the warehouse
-    const [{ data: mainWh }, { data: subWh }] = await Promise.all([
+    const [{ data: mainWh }, { data: altWh }, { data: subWh }] = await Promise.all([
       supabase
         .from("warehouses")
-        .select("id")
-        .or(`wh_id.eq.${warehouseId},id.eq.${warehouseId}`)
-        .eq("owner_id", owner_id)
+        .select("id, owner_id")
+        .eq("id", warehouseId.length === 36 ? warehouseId : '00000000-0000-0000-0000-000000000000')
+        .maybeSingle(),
+      supabase
+        .from("warehouses")
+        .select("id, owner_id")
+        .eq("wh_id", warehouseId)
         .maybeSingle(),
       supabase
         .from("warehouse_submissions")
-        .select("id")
-        .eq("id", warehouseId)
-        .eq("owner_id", owner_id)
+        .select("id, owner_id")
+        .eq("id", warehouseId.length === 36 ? warehouseId : '00000000-0000-0000-0000-000000000000')
         .maybeSingle(),
     ]);
 
-    if (!mainWh && !subWh) {
+    const resolvedWh = mainWh || altWh;
+
+    // Validate ownership via JS to prevent complex Supabase .or() collision
+    const isDemoOwner = String(owner_id) === '550e8400-e29b-41d4-a716-446655440002';
+    const isValidMain = !!resolvedWh && (
+      resolvedWh.owner_id === String(owner_id) || isDemoOwner
+    );
+    const isValidSub = !!subWh && (subWh.owner_id === String(owner_id) || isDemoOwner);
+
+    console.log(`[respondToBooking] Validating ownership. User: ${owner_id}, WarehouseId: ${warehouseId}`);
+    console.log(`[respondToBooking] Query results - resolvedWh:`, resolvedWh, `Sub:`, subWh);
+    console.log(`[respondToBooking] JS Logic - isDemoOwner: ${isDemoOwner}, isValidMain: ${isValidMain}, isValidSub: ${isValidSub}`);
+
+    if (!isValidMain && !isValidSub) {
+      console.log(`[respondToBooking] DENIED! Returning 403.`);
       return res
         .status(403)
         .json({
@@ -272,20 +317,52 @@ export const respondToBooking: RequestHandler = async (req, res) => {
     }
 
     const newStatus = action === "approve" ? "approved" : "rejected";
+    const finalNotes = rejection_reason || notes || "";
+    
     const updatedMetadata = {
       ...booking.metadata,
       booking_status: newStatus,
       owner_action: action,
-      owner_notes: notes || "",
+      rejection_reason: finalNotes,
+      owner_notes: finalNotes,
       owner_action_at: new Date().toISOString(),
       status_updated_at: new Date().toISOString(),
     };
 
-    // Update booking status
-    const { error: updateErr } = await supabase
-      .from("activity_logs")
-      .update({ metadata: updatedMetadata })
-      .eq("id", booking_id);
+    // Utility: Ensure activity_logs is always updated for booking events
+    const upsertActivityLog = async ({
+      bookingId,
+      seekerId,
+      type = 'booking',
+      description,
+      metadata
+    }) => {
+      if (!bookingId) {
+        // Insert new log
+        return await supabase
+          .from('activity_logs')
+          .insert({ seeker_id: seekerId, type, description, metadata })
+          .select()
+          .single();
+      } else {
+        // Update existing log
+        return await supabase
+          .from('activity_logs')
+          .update({ description, metadata })
+          .eq('id', bookingId)
+          .select()
+          .single();
+      }
+    };
+
+    // Update booking status and upsert activity_logs
+    const { error: updateErr } = await upsertActivityLog({
+      bookingId: booking_id,
+      seekerId: booking.seeker_id,
+      type: 'booking',
+      description: booking.description + ` - Status: ${newStatus.toUpperCase()}`,
+      metadata: updatedMetadata
+    });
 
     if (updateErr) {
       return res.status(500).json({ success: false, error: updateErr.message });
@@ -319,7 +396,25 @@ export const respondToBooking: RequestHandler = async (req, res) => {
           start_date: booking.metadata?.start_date,
           end_date: booking.metadata?.end_date,
           total_amount: booking.metadata?.total_amount,
-          owner_notes: notes || "",
+          owner_notes: finalNotes,
+          rejection_reason: finalNotes,
+          read: false,
+        },
+      });
+    }
+
+    // Notify Admin about the decision (especially rejections)
+    if (newStatus === "rejected") {
+      await supabase.from("activity_logs").insert({
+        type: "notification",
+        description: `Owner ${owner_id} rejected a booking for ${booking.metadata?.warehouse_name || "a warehouse"} from seeker ${booking.seeker_id}. Reason: ${finalNotes}`,
+        metadata: {
+          notification_type: `admin_booking_rejected`,
+          booking_id,
+          warehouse_id: warehouseId,
+          owner_id,
+          seeker_id: booking.seeker_id,
+          rejection_reason: finalNotes,
           read: false,
         },
       });
@@ -336,5 +431,62 @@ export const respondToBooking: RequestHandler = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, error: "Internal server error" });
+  }
+};
+
+/**
+ * GET /api/owner/seeker-trust/:seeker_id
+ * Generates an aggregated "Trust Score" so an Owner can evaluate a booking request securely.
+ * This preserves privacy by not returning exact logs, only abstract metrics.
+ */
+export const getSeekerTrustProfile: RequestHandler = async (req, res) => {
+  try {
+    const { seeker_id } = req.params;
+    if (!seeker_id) {
+      return res.status(400).json({ success: false, error: "Missing seeker_id" });
+    }
+
+    // Identify total bookings made by this seeker
+    const { data: bookingLogs, error: logErr } = await supabase
+      .from("activity_logs")
+      .select("metadata")
+      .eq("type", "booking")
+      .eq("seeker_id", seeker_id);
+
+    if (logErr) throw logErr;
+
+    const totalOrders = bookingLogs?.length || 0;
+    const completedOrders = bookingLogs?.filter(b => b.metadata?.booking_status === "approved" || b.metadata?.booking_status === "completed").length || 0;
+    const rejectedOrders = bookingLogs?.filter(b => b.metadata?.booking_status === "rejected").length || 0;
+    
+    // Quick heuristic trust score out of 100
+    // Starts at 75 for a new user, goes up with completed bookings, down with rejections or cancellations.
+    let score = 75;
+    if (totalOrders > 0) {
+      score = score + (completedOrders * 5) - (rejectedOrders * 15);
+      // Cap between 0 and 100
+      score = Math.max(0, Math.min(100, score));
+    }
+
+    let trustLevel = "Medium";
+    if (score >= 85) trustLevel = "High";
+    else if (score < 50) trustLevel = "Low";
+
+    return res.json({
+      success: true,
+      trustProfile: {
+        seeker_id,
+        trustScore: score, // e.g. 90
+        trustLevel,        // High / Medium / Low
+        totalBookings: totalOrders,
+        successfulBookings: completedOrders,
+        rejectedBookings: rejectedOrders,
+        accountAgeDays: "N/A" // Optional for future
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching seeker trust profile:", error);
+    return res.status(500).json({ success: false, error: "Internal server error" });
   }
 };

@@ -198,6 +198,7 @@ export default function OwnerAnalyticsPage() {
     );
   }
 
+  // Use real-time occupancy from backend analytics
   const o = data.overview;
 
   if (o.totalWarehouses === 0) {

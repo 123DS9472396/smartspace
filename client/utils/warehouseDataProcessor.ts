@@ -88,8 +88,8 @@ export function processWarehouseData(rawData: RawWarehouseData): ProcessedWareho
   const pricing = parseFloat(rawData['Pricing (INR/sqft/month)']) || 0;
   const microRentalSpaces = parseInt(rawData['Micro Rental Spaces']) || 0;
   
-  // Generate synthetic data for fields not in CSV
-  const occupancy = Math.random() * 0.4 + 0.5; // 50-90% occupancy
+  // Occupancy is now computed in real-time from backend analytics; set to 0 as placeholder (do not use in UI)
+  const occupancy = 0;
   const rating = Math.random() * 2 + 3; // 3-5 star rating
   const reviews = Math.floor(Math.random() * 50) + 5; // 5-55 reviews
   const status = Math.random() > 0.1 ? 'Active' : 'Pending'; // 90% active
@@ -111,7 +111,7 @@ export function processWarehouseData(rawData: RawWarehouseData): ProcessedWareho
     pricing,
     warehouseType: rawData['Warehouse Type'],
     totalSize,
-    occupancy: Math.round(occupancy * 100), // Convert to percentage
+    occupancy: 0, // always use real-time value from backend
     rating: Math.round(rating * 10) / 10, // Round to 1 decimal
     reviews,
     amenities: generateAmenities(rawData['Warehouse Type']),

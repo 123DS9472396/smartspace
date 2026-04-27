@@ -1,3 +1,4 @@
+
 import { RequestHandler } from "express";
 import { supabase } from '../lib/supabaseClient';
 
@@ -89,7 +90,33 @@ export const updateBookingStatus: RequestHandler = async (req, res) => {
             });
         }
 
-        // Update the booking status in activity_logs
+        // Utility: Ensure activity_logs is always updated for booking events
+        const upsertActivityLog = async ({
+            bookingId,
+            seekerId,
+            type = 'booking',
+            description,
+            metadata
+        }) => {
+            if (!bookingId) {
+                // Insert new log
+                return await supabase
+                    .from('activity_logs')
+                    .insert({ seeker_id: seekerId, type, description, metadata })
+                    .select()
+                    .single();
+            } else {
+                // Update existing log
+                return await supabase
+                    .from('activity_logs')
+                    .update({ description, metadata })
+                    .eq('id', bookingId)
+                    .select()
+                    .single();
+            }
+        };
+
+        // Fetch the existing log to get seeker_id and metadata
         const { data: existingLog, error: fetchError } = await supabase
             .from('activity_logs')
             .select('*')
@@ -114,15 +141,14 @@ export const updateBookingStatus: RequestHandler = async (req, res) => {
             status_updated_by: 'admin'
         };
 
-        const { data: updatedLog, error: updateError } = await supabase
-            .from('activity_logs')
-            .update({
-                metadata: updatedMetadata,
-                description: `${existingLog.description} - Status: ${status.toUpperCase()}`
-            })
-            .eq('id', bookingId)
-            .select()
-            .single();
+        // Use upsertActivityLog for robust update
+        const { data: updatedLog, error: updateError } = await upsertActivityLog({
+            bookingId,
+            seekerId: existingLog.seeker_id,
+            type: 'booking',
+            description: `${existingLog.description} - Status: ${status.toUpperCase()}`,
+            metadata: updatedMetadata
+        });
 
         if (updateError) {
             console.error('❌ Error updating booking status:', updateError);

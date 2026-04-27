@@ -82,11 +82,18 @@ export default defineConfig(({ mode }) => ({
       "react-day-picker",
       "react-hook-form",
       "react-resizable-panels",
+      "tesseract.js",
+      "pdfjs-dist",
+      "@tensorflow/tfjs",
+      "@tensorflow-models/mobilenet"
     ],
     force: true,
-  },
-  esbuild: {
-    jsxInject: undefined,
+    esbuildOptions: {
+      alias: {
+        react: "./node_modules/react/index.js",
+        "react-dom": "./node_modules/react-dom/index.js",
+      },
+    },
   },
 }));
 

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartSpace Team Module Distribution - Presentation</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #141b34;
+      --accent: #27c2ff;
+      --accent-2: #38d39f;
+      --text: #f4f7ff;
+      --muted: #b8c3e5;
+      --warn: #ffd166;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 10%, #1a2452 0%, transparent 35%),
+        radial-gradient(circle at 80% 20%, #16344f 0%, transparent 35%),
+        linear-gradient(160deg, #070b18 0%, #111a33 100%);
+      min-height: 100vh;
+    }
+    .deck {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      border: 1px solid #35529f;
+      background: #1a2a55;
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn:hover { border-color: var(--accent); }
+    .status { color: var(--muted); font-size: 14px; }
+    .slide {
+      display: none;
+      background: linear-gradient(170deg, rgba(26,34,74,0.96), rgba(18,24,46,0.96));
+      border: 1px solid #2f427e;
+      border-radius: 18px;
+      padding: 28px;
+      min-height: 70vh;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.35);
+      animation: fadeIn 280ms ease;
+    }
+    .slide.active { display: block; }
+    h1, h2, h3 { margin-top: 0; }
+    h1 { font-size: 2rem; color: #d8e3ff; }
+    h2 { font-size: 1.5rem; color: #d6e6ff; }
+    h3 { font-size: 1.1rem; color: var(--accent); margin-bottom: 8px; }
+    p, li { color: var(--muted); line-height: 1.55; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .card {
+      background: rgba(13, 20, 43, 0.8);
+      border: 1px solid #2f427e;
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 6px 10px;
+      background: rgba(39,194,255,0.12);
+      color: #94e5ff;
+      border: 1px solid rgba(39,194,255,0.4);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      margin-bottom: 10px;
+    }
+    .highlight { color: var(--accent-2); font-weight: 700; }
+    .risk { color: var(--warn); font-weight: 700; }
+    ul { margin: 8px 0 0 20px; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <div class="toolbar">
+      <div>
+        <button class="btn" onclick="prevSlide()">Previous</button>
+        <button class="btn" onclick="nextSlide()">Next</button>
+      </div>
+      <div class="status" id="status">Slide 1 / 7</div>
+    </div>
+
+    <section class="slide active">
+      <h1>SmartSpace Project Distribution</h1>
+      <p>External Presentation Deck</p>
+      <div class="grid">
+        <div class="card">
+          <span class="tag">Seeker Module</span>
+          <h3>Dipesh + Manthan</h3>
+          <p>Search, warehouse details, block booking UI, seeker profile, saved flows, recommendation experience.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Admin Module</span>
+          <h3>Pranjal</h3>
+          <p>Admin dashboards, booking moderation, submission review, user operations, monitoring analytics.</p>
+        </div>
+        <div class="card">
+          <span class="tag">Owner + Data Backbone</span>
+          <h3>Sahil</h3>
+          <p>Owner workflows, Supabase schema/RLS, migration scripts, import pipelines, data quality integrity.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <h2>Architecture Summary</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Frontend</h3>
+          <p>React + TypeScript pages/components in client for seekers, owners, and admins.</p>
+        </div>
+        <div class="card">
+          <h3>Backend</h3>
+          <p>Express routes in server expose API endpoints and enforce business workflows.</p>
+        </div>
+        <div class="card">
+          <h3>Data Layer</h3>
+          <p>Supabase Postgres + RLS policies, migrations, repair scripts, and import automation.</p>
+        </div>
+      </div>
+      <h3>Main Runtime Flow</h3>
+      <ul>
+        <li>Frontend triggers API calls under /api.</li>
+        <li>Backend routes process booking, review, analytics, and notifications.</li>
+        <li>Supabase tables (especially activity_logs and warehouses) power occupancy and dashboard metrics.</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Dipesh + Manthan: Seeker Module</h2>
+      <h3>Owned Areas</h3>
+      <ul>
+        <li>Pages: Warehouses, WarehouseDetail, SeekerHub, SeekerBookingsPage, Saved, Compare, SmartBooking.</li>
+        <li>Components: GridBlockSelector, BlockGridCSS3D, BookingSummary, BookingSummary3D, Inquiry/Schedule modals.</li>
+        <li>Services/Hooks: warehouseService, blockBookingService, smartBookingService, aiService, use-recommendations.</li>
+      </ul>
+      <h3>External Demo Story</h3>
+      <ul>
+        <li>Search warehouse by filters and city.</li>
+        <li>Open details and 3D block selection.</li>
+        <li>Create booking and show seeker booking history.</li>
+        <li>Show AI recommendations and saved workflows.</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Pranjal: Admin Module</h2>
+      <h3>Owned Areas</h3>
+      <ul>
+        <li>Pages: AdminDashboard, AdminBookingsPage, AdminWarehousesPage, AdminUsersPage, AdminVerificationPage.</li>
+        <li>Routes: admin-bookings, admin-warehouses, admin-warehouse-submissions, admin-user-activity.</li>
+        <li>Analytics: system-wide monitoring and moderation metrics.</li>
+      </ul>
+      <h3>External Demo Story</h3>
+      <ul>
+        <li>Review pending bookings and update status.</li>
+        <li>Review warehouse submissions and approve/reject flow.</li>
+        <li>Show user analytics and governance controls.</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Sahil: Owner + Database + Data Generation</h2>
+      <h3>Owned Areas</h3>
+      <ul>
+        <li>Owner pages: ListProperty, OwnerProperties, OwnerAnalyticsPage, OwnerNotificationsPage, OwnerProfilePage.</li>
+        <li>Owner routes: owner-bookings, warehouse-submissions, recommend-price, product-pricing.</li>
+        <li>Database: database/*.sql, supabase/migrations/*.sql, scripts/*.ts/*.js imports and fixes.</li>
+      </ul>
+      <h3>External Demo Story</h3>
+      <ul>
+        <li>Owner listing and booking response lifecycle.</li>
+        <li>Explain schema, RLS policy controls, and migration safety.</li>
+        <li>Show data import and quality-fix operations for large warehouse datasets.</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <h2>Cross-Team Shared Files</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>shared/advanced-llm-service.ts</h3>
+          <p>Model fallback orchestration for AI responses.</p>
+        </div>
+        <div class="card">
+          <h3>shared/advanced-ml-algorithms.ts</h3>
+          <p>ML recommendation computations and ranking logic.</p>
+        </div>
+        <div class="card">
+          <h3>shared/api.ts</h3>
+          <p>Shared API types and contracts across frontend/backend.</p>
+        </div>
+      </div>
+      <p class="highlight">Recommended: cross-team review on shared files before each release.</p>
+    </section>
+
+    <section class="slide">
+      <h2>Delivery Plan and Risk Mitigation</h2>
+      <h3>Readiness Checklist</h3>
+      <ul>
+        <li>Seeker flow validated end-to-end by Dipesh + Manthan.</li>
+        <li>Admin moderation and dashboards validated by Pranjal.</li>
+        <li>Schema, RLS, scripts, and owner workflows validated by Sahil.</li>
+      </ul>
+      <h3>Key Risks</h3>
+      <ul>
+        <li><span class="risk">RLS/policy mismatch</span> can break profile/submission reads.</li>
+        <li><span class="risk">Status transition bugs</span> can desync occupancy/availability.</li>
+        <li><span class="risk">Data import drift</span> can affect analytics quality.</li>
+      </ul>
+      <h3>Mitigation</h3>
+      <ul>
+        <li>Lock ownership and handoff checklist per module.</li>
+        <li>Run pre-demo smoke tests on seeker/admin/owner flows.</li>
+        <li>Keep migration + rollback scripts versioned and reviewed.</li>
+      </ul>
+      <p class="highlight">Presentation complete. Use arrow keys or buttons to navigate.</p>
+    </section>
+  </div>
+
+  <script>
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    let index = 0;
+    const status = document.getElementById('status');
+
+    function render() {
+      slides.forEach((s, i) => s.classList.toggle('active', i === index));
+      status.textContent = `Slide ${index + 1} / ${slides.length}`;
+    }
+
+    function nextSlide() {
+      index = Math.min(index + 1, slides.length - 1);
+      render();
+    }
+
+    function prevSlide() {
+      index = Math.max(index - 1, 0);
+      render();
+    }
+
+    window.nextSlide = nextSlide;
+    window.prevSlide = prevSlide;
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+
+    render();
+  </script>
+</body>
+</html>

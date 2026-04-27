@@ -19,7 +19,7 @@ export interface WarehouseData {
   warehouseType: string;
   size: number; // total size in sqft
   // Enhanced fields
-  occupancy: number; // percentage 0-100
+  // occupancy: number; // DEPRECATED — use real-time occupancy from backend analytics
   rating: number; // 1-5 stars
   reviews: number;
   amenities: string[];
@@ -48,7 +48,8 @@ export const maharashtraWarehouses: WarehouseData[] = [
     pricing: 58,
     warehouseType: 'Zepto Dark Store',
     size: 100602,
-    occupancy: 75,
+    // occupancy field is now deprecated; use real-time occupancy from backend analytics
+    // occupancy: 0, // DEPRECATED
     rating: 4.2,
     reviews: 28,
     amenities: ['24/7 Security', 'Loading Dock', 'Climate Control', 'Rapid Dispatch System', 'E-commerce Integration'],
@@ -74,7 +75,7 @@ export const maharashtraWarehouses: WarehouseData[] = [
     pricing: 96,
     warehouseType: 'Pharma Cold Chain',
     size: 95517,
-    occupancy: 82,
+    occupancy: 0,
     rating: 4.7,
     reviews: 45,
     amenities: ['24/7 Security', 'Loading Dock', 'Temperature Control', 'Humidity Control', 'FDA Certified', 'Pharmaceutical Grade'],

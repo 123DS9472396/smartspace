@@ -377,11 +377,28 @@ export default function SeekerBookingsPage() {
                                                         </Button>
                                                     )}
 
-                                                    {booking.admin_status === 'pending' && (
+                                                    {/* Withdraw Booking button for eligible bookings */}
+                                                    {(
+                                                        (booking.status === 'active' || booking.status === 'upcoming' || booking.admin_status === 'approved') &&
+                                                        booking.status !== 'cancelled' && booking.status !== 'completed'
+                                                    ) && (
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             className="border-red-600 text-red-400 hover:bg-red-900/30"
+                                                            onClick={() => handleCancelBooking(booking.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4 mr-2" />
+                                                            Withdraw Booking
+                                                        </Button>
+                                                    )}
+
+                                                    {/* Cancel button for pending bookings (legacy, optional) */}
+                                                    {booking.admin_status === 'pending' && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="border-yellow-600 text-yellow-400 hover:bg-yellow-900/30"
                                                             onClick={() => handleCancelBooking(booking.id)}
                                                         >
                                                             <Trash2 className="h-4 w-4 mr-2" />

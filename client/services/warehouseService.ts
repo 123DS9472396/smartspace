@@ -107,16 +107,7 @@ class WarehouseService {
   private convertMockToSupabase(
     mockWarehouse: WarehouseData,
   ): SupabaseWarehouse {
-    const safeOccupancy = Math.max(0, Math.min(1, mockWarehouse.occupancy));
-    const safeSize = Math.max(0, mockWarehouse.size);
-    const safePricing = Math.max(0, mockWarehouse.pricing);
-    const safeRating = Math.max(0, Math.min(5, mockWarehouse.rating));
-    const totalBlocks = Math.ceil(safeSize / 1000);
-    const availableBlocks = Math.max(
-      0,
-      Math.ceil(totalBlocks * (1 - safeOccupancy)),
-    );
-
+    // occupancy and available_area must always be set by backend analytics, not calculated here
     return {
       id: mockWarehouse.whId,
       wh_id: mockWarehouse.whId,
@@ -130,8 +121,8 @@ class WarehouseService {
       pincode: "411001",
       latitude: null,
       longitude: null,
-      total_area: safeSize,
-      price_per_sqft: safePricing,
+      total_area: mockWarehouse.size,
+      price_per_sqft: mockWarehouse.pricing,
       images: [mockWarehouse.image],
       amenities: mockWarehouse.amenities || [],
       features: [
@@ -144,13 +135,13 @@ class WarehouseService {
         mockWarehouse.status.toLowerCase() === "active"
           ? "available"
           : mockWarehouse.status.toLowerCase(),
-      occupancy: safeOccupancy,
-      rating: safeRating,
+      occupancy: 0, // always use real-time value from backend
+      rating: Math.max(0, Math.min(5, mockWarehouse.rating)),
       reviews_count: Math.max(0, mockWarehouse.reviews || 0),
-      total_blocks: totalBlocks,
-      available_blocks: availableBlocks,
-      grid_rows: Math.ceil(Math.sqrt(totalBlocks)),
-      grid_cols: Math.ceil(Math.sqrt(totalBlocks)),
+      total_blocks: 0,
+      available_blocks: 0,
+      grid_rows: 1,
+      grid_cols: 1,
       owner_id: null,
       created_at: mockWarehouse.registrationDate || new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -1044,10 +1035,16 @@ class WarehouseService {
       console.log("🔍 Fetching warehouses for owner:", ownerId);
 
       // Fetch warehouses from main warehouses table
-      const { data: ownedWarehouses, error: warehousesError } = await supabase
-        .from("warehouses")
-        .select("*")
-        .eq("owner_id", ownerId);
+      const isDemoOwner = ownerId === '550e8400-e29b-41d4-a716-446655440002';
+      let mainWarehousesQuery = supabase.from("warehouses").select("*");
+      
+      if (isDemoOwner) {
+        mainWarehousesQuery = mainWarehousesQuery.or(`owner_id.eq.${ownerId},owner_id.eq.550e8400-e29b-41d4-a716-0000000000a2,owner_id.is.null`);
+      } else {
+        mainWarehousesQuery = mainWarehousesQuery.eq("owner_id", ownerId);
+      }
+
+      const { data: ownedWarehouses, error: warehousesError } = await mainWarehousesQuery;
 
       if (warehousesError) {
         console.error("❌ Error fetching owned warehouses:", warehousesError);

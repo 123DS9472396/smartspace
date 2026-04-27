@@ -700,15 +700,9 @@ Provide 2 actionable tips on pricing, availability, or marketing.`;
                                   </div>
                                 </td>
                                 <td className="py-4 pr-4 text-slate-600 dark:text-slate-300">
-                                  {Math.floor(
-                                    property.total_area *
-                                      (1 -
-                                        (Number(property.occupancy || 0) <= 1
-                                          ? Number(property.occupancy || 0)
-                                          : Number(property.occupancy || 0) /
-                                            100)),
-                                  ).toLocaleString()}{" "}
-                                  sq ft
+                                  {typeof property.available_area === 'number'
+                                    ? property.available_area.toLocaleString()
+                                    : '—'} sq ft
                                 </td>
                                 <td className="py-4 pr-4 text-slate-600 dark:text-slate-300">
                                   ₹{property.price_per_sqft}/sq ft
@@ -821,15 +815,9 @@ Provide 2 actionable tips on pricing, availability, or marketing.`;
                             </div>
                             <div className="mt-3 text-sm text-slate-600 dark:text-slate-300">
                               <div>
-                                {Math.floor(
-                                  property.total_area *
-                                    (1 -
-                                      (Number(property.occupancy || 0) <= 1
-                                        ? Number(property.occupancy || 0)
-                                        : Number(property.occupancy || 0) /
-                                          100)),
-                                ).toLocaleString()}{" "}
-                                sq ft available
+                                {typeof property.available_area === 'number'
+                                  ? property.available_area.toLocaleString()
+                                  : '—'} sq ft available
                               </div>
                               <div>₹{property.price_per_sqft}/sq ft</div>
                             </div>

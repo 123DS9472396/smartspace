@@ -360,11 +360,11 @@ export default function WarehouseDetail() {
       } else {
         throw new Error(result.error || 'Booking failed');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('3D booking error:', error);
       toast({
         title: "Booking Failed",
-        description: "There was an error processing your booking. Please try again.",
+        description: error.message || "There was an error processing your booking. Please try again.",
         variant: "destructive",
       });
       throw error;
@@ -678,12 +678,15 @@ export default function WarehouseDetail() {
       "https://images.unsplash.com/photo-1565610222536-ef2bdc4a7fd2?w=800&q=80"
     ];
 
-  const safeOccupancy = Math.max(0, Math.min(100, (warehouse.occupancy || 0) * 100));
-  const safeAvailableBlocks = Math.max(0, warehouse.available_blocks || 0);
-  const safeTotalBlocks = Math.max(0, warehouse.total_blocks || 0);
-  const safeAvailableArea = warehouse.total_area > 0
-    ? Math.max(0, Math.floor(warehouse.total_area * (1 - (warehouse.occupancy || 0))))
+  // Use backend-provided real-time values
+  const safeOccupancy = warehouse && typeof warehouse.occupancy === 'number'
+    ? Math.max(0, Math.min(100, warehouse.occupancy * 100))
     : 0;
+  const safeAvailableArea = warehouse && typeof warehouse.available_area === 'number'
+    ? Math.max(0, warehouse.available_area)
+    : 0;
+  const safeAvailableBlocks = Math.max(0, warehouse?.available_blocks || 0);
+  const safeTotalBlocks = Math.max(0, warehouse?.total_blocks || 0);
 
   const warehouseAmenities = warehouse.amenities || [];
   const displayedAmenities = showAllAmenities
@@ -1611,7 +1614,7 @@ export default function WarehouseDetail() {
                 {/* Quick Stats */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gray-900/50 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold text-blue-400">{Math.round((1 - warehouse.occupancy) * 100)}%</div>
+                    <div className="text-2xl font-bold text-blue-400">{(100 - safeOccupancy).toFixed(1)}%</div>
                     <div className="text-xs text-gray-400">Availability</div>
                   </div>
                   <div className="bg-gray-900/50 rounded-lg p-3 text-center">

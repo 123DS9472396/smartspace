@@ -19,7 +19,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     <div className="bg-slate-900/98 border border-slate-600/80 rounded-xl p-3 shadow-2xl backdrop-blur-md">
       <p className="text-slate-300 text-xs font-medium mb-2">{label}</p>
       {payload.map((p: any, i: number) => (
-        <p key={i} className="text-sm font-semibold" style={{ color: p.color }}>
+        <p key={i} className={`text-sm font-semibold ${p.color}`}>
           {p.name}: <span>{typeof p.value === 'number' ? p.value.toLocaleString() : p.value}</span>
         </p>
       ))}
@@ -108,7 +108,7 @@ export default function AdminAnalyticsPage() {
             <div className="relative w-20 h-20 mx-auto">
               <div className="absolute inset-0 rounded-full border-4 border-slate-700"></div>
               <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 animate-spin"></div>
-              <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-cyan-400 animate-spin" style={{ animationDuration: '0.8s' }}></div>
+              <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-cyan-400 animate-spin admin-analytics-spin"></div>
               <div className="absolute inset-4 rounded-full bg-blue-500/10 flex items-center justify-center">
                 <BarChart3 className="w-5 h-5 text-blue-400" />
               </div>
@@ -137,19 +137,21 @@ export default function AdminAnalyticsPage() {
     );
   }
 
+  // Use real-time occupancy from backend analytics
+  // Use real-time occupancy from backend analytics only
   const o = data.overview;
 
   return (
     <div className="min-h-screen bg-[#070b14] text-white">
       <Navbar />
 
-      <div className="fixed inset-0 pointer-events-none overflow-hidden" style={{ zIndex: 0 }}>
+      <div className="fixed inset-0 pointer-events-none overflow-hidden admin-analytics-bg-z0">
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-blue-600/6 rounded-full blur-3xl"></div>
         <div className="absolute top-1/2 right-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl"></div>
         <div className="absolute bottom-0 left-1/2 w-80 h-80 bg-green-500/4 rounded-full blur-3xl"></div>
       </div>
 
-      <div className="relative max-w-[1600px] mx-auto px-6 py-8" style={{ zIndex: 1 }}>
+      <div className="relative max-w-[1600px] mx-auto px-6 py-8 admin-analytics-bg-z1">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

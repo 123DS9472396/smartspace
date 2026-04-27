@@ -14,6 +14,12 @@ import { supabase } from "@/lib/supabase";
 import { getAIResponse } from "@/services/aiService";
 import { useToast } from "@/hooks/use-toast";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Bell,
   Package,
   Calendar,
@@ -42,23 +48,32 @@ interface OwnerNotification {
   type: string;
   description: string;
   created_at: string;
-  metadata: {
+  metadata?: {
     notification_type: string;
-    booking_status?: string;
-    booking_id: string;
-    warehouse_id: string;
-    warehouse_name: string;
-    seeker_name: string;
-    seeker_email: string;
-    seeker_phone: string;
-    blocks_booked: Array<{ id?: string; block_number?: number }> | number[];
-    area_sqft: number;
-    start_date: string;
-    end_date: string;
-    total_amount: number;
-    payment_method: string;
+    booking_status?: "pending" | "approved" | "rejected" | "cancelled" | "completed";
+    booking_id?: string;
+    warehouse_id?: string;
+    warehouse_name?: string;
+    seeker_id?: string;
+    seeker_name?: string;
+    seeker_email?: string;
+    seeker_phone?: string;
+    blocks_booked?: number[] | any[];
+    area_sqft?: number;
+    start_date?: string;
+    end_date?: string;
+    total_amount?: number;
+    payment_method?: string;
     read: boolean;
   };
+}
+
+interface TrustProfile {
+  trustScore: number;
+  trustLevel: string;
+  totalBookings: number;
+  successfulBookings: number;
+  rejectedBookings: number;
 }
 
 export default function OwnerNotificationsPage() {
@@ -72,6 +87,9 @@ export default function OwnerNotificationsPage() {
   const [draftReplies, setDraftReplies] = useState<Record<string, string>>({});
   const [draftLoadingId, setDraftLoadingId] = useState<string | null>(null);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [selectedRejectBooking, setSelectedRejectBooking] = useState<OwnerNotification | null>(null);
+  const [rejectionReason, setRejectionReason] = useState<string>("Space recently became unavailable");
+  const [trustProfiles, setTrustProfiles] = useState<Record<string, TrustProfile | null>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -113,6 +131,7 @@ export default function OwnerNotificationsPage() {
           booking_id: b.id,
           warehouse_id: b.warehouse_id || "",
           warehouse_name: b.warehouse_name || "Warehouse",
+          seeker_id: b.seeker_id || "",
           seeker_name: b.seeker_name || "Customer",
           seeker_email: b.seeker_email || "",
           seeker_phone: b.seeker_phone || "",
@@ -127,15 +146,19 @@ export default function OwnerNotificationsPage() {
       }));
 
       // 2. Also get explicit notification records (visit requests, booking status change alerts)
+      // We look up 'inquiry' as well as we recently migrated 'notification' to 'inquiry' due to constraints
       const { data: notifData } = await supabase
         .from("activity_logs")
         .select("*")
         .eq("seeker_id", user.id)
-        .eq("type", "notification")
+        .in("type", ["notification", "inquiry"])
         .order("created_at", { ascending: false });
 
+      // Include visit requests AND booking status notifications as fallback
       const explicitNotifs = (notifData || []).filter(
-        (n: any) => n.metadata?.notification_type === "visit_request",
+        (n: any) => n.metadata?.notification_type === "visit_request" || 
+                    n.metadata?.notification_type === "booking_approved" || 
+                    n.metadata?.notification_type === "booking_rejected"
       );
 
       // Merge: owner bookings first (most important), then explicit notifications
@@ -156,6 +179,23 @@ export default function OwnerNotificationsPage() {
         `📬 Owner can see ${merged.length} total items (${ownerBookingNotifications.length} bookings, ${uniqueNotifs.length} notifications)`,
       );
       setNotifications(merged);
+
+      // Fetch trust profiles for these seekers
+      try {
+        const uniqueSeekers = [...new Set(merged.map(m => m.metadata?.seeker_id).filter(Boolean))];
+        const trusts: Record<string, TrustProfile | null> = {};
+        await Promise.all(uniqueSeekers.map(async (sid: string) => {
+          const tRes = await fetch(`/api/owner/seeker-trust/${sid}`);
+          const tData = await tRes.json();
+          if (tData.success && tData.trustProfile) {
+            trusts[sid] = tData.trustProfile;
+          }
+        }));
+        setTrustProfiles(trusts);
+      } catch (err) {
+        console.error("Error fetching trust profiles:", err);
+      }
+
     } catch (err) {
       console.error("Error fetching owner notifications:", err);
     } finally {
@@ -166,6 +206,7 @@ export default function OwnerNotificationsPage() {
   const handleOwnerRespond = async (
     notification: OwnerNotification,
     action: "approve" | "reject",
+    reason?: string
   ) => {
     const bookingId = notification.metadata?.booking_id;
     if (!bookingId || !user) return;
@@ -179,6 +220,7 @@ export default function OwnerNotificationsPage() {
           booking_id: bookingId,
           owner_id: user.id,
           action,
+          rejection_reason: reason
         }),
       });
       const data = await res.json();
@@ -193,6 +235,8 @@ export default function OwnerNotificationsPage() {
               ? "The seeker has been notified. Blocks are now marked as occupied."
               : "The booking has been rejected and blocks released.",
         });
+        
+        if (action === "reject") setSelectedRejectBooking(null);
         // Refresh the list
         await fetchNotifications();
       } else {
@@ -218,6 +262,11 @@ export default function OwnerNotificationsPage() {
       const notification = notifications.find((n) => n.id === notificationId);
       if (!notification) return;
 
+      // Ensure we query Supabase using a valid UUID, not the compound prefixed frontend ID
+      const actId = notificationId.startsWith("booking-log-")
+        ? notification.metadata.booking_id
+        : notificationId;
+
       await supabase
         .from("activity_logs")
         .update({
@@ -226,7 +275,7 @@ export default function OwnerNotificationsPage() {
             read: true,
           },
         })
-        .eq("id", notificationId);
+        .eq("id", actId);
 
       setNotifications((prev) =>
         prev.map((n) =>
@@ -484,13 +533,28 @@ Tone: polite, business-friendly, and action-oriented. Keep it under 80 words.`;
                                 <h4 className="text-sm font-semibold text-gray-300 mb-3">
                                   Customer Details
                                 </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                  <div className="flex items-center gap-2 text-gray-400">
-                                    <User className="h-4 w-4" />
-                                    <span className="text-sm">
+                                <div className="space-y-3 mt-4">
+                                  <div className="flex items-center gap-2 text-gray-300">
+                                    <User className="h-4 w-4 text-blue-400" />
+                                    <span className="font-medium">
                                       {notification.metadata?.seeker_name}
                                     </span>
                                   </div>
+                                  
+                                  {/* Seeker Trust Rank Logic */}
+                                  {notification.metadata?.seeker_id && trustProfiles[notification.metadata.seeker_id] && (
+                                    <div className="flex items-center gap-2 ml-6 mb-2">
+                                      {trustProfiles[notification.metadata.seeker_id]?.trustLevel === 'High' ? (
+                                        <Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] py-0">⭐ High Trust ({trustProfiles[notification.metadata.seeker_id]?.trustScore}/100)</Badge>
+                                      ) : trustProfiles[notification.metadata.seeker_id]?.trustLevel === 'Medium' ? (
+                                        <Badge className="bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 text-[10px] py-0">✓ Medium Trust ({trustProfiles[notification.metadata.seeker_id]?.trustScore}/100)</Badge>
+                                      ) : (
+                                        <Badge className="bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] py-0">⚠️ Low Trust ({trustProfiles[notification.metadata.seeker_id]?.trustScore}/100)</Badge>
+                                      )}
+                                      <span className="text-[10px] text-gray-400">({trustProfiles[notification.metadata.seeker_id]?.successfulBookings} successful bookings)</span>
+                                    </div>
+                                  )}
+
                                   <div className="flex items-center gap-2 text-gray-400">
                                     <Mail className="h-4 w-4" />
                                     <span className="text-sm">
@@ -544,7 +608,7 @@ Tone: polite, business-friendly, and action-oriented. Keep it under 80 words.`;
                                 className="border-red-500/60 text-red-400 hover:bg-red-500/10"
                                 disabled={isResponding}
                                 onClick={() =>
-                                  handleOwnerRespond(notification, "reject")
+                                  setSelectedRejectBooking(notification)
                                 }
                               >
                                 <ThumbsDown className="h-4 w-4 mr-1" />
@@ -665,6 +729,63 @@ Tone: polite, business-friendly, and action-oriented. Keep it under 80 words.`;
           }}
         />
       )}
+      
+      {/* Rejection Modal */}
+      <Dialog open={!!selectedRejectBooking} onOpenChange={(open) => !open && setSelectedRejectBooking(null)}>
+        <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-400">
+              <AlertCircle className="w-5 h-5" />
+              Reject Booking Request
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <p className="text-sm text-gray-300">
+              Please provide a reason for rejecting this booking. This will be sent to the seeker and admin. 
+              <strong> The reserved blocks will immediately be re-opened for others to book within 30 seconds.</strong>
+            </p>
+            <div className="space-y-3">
+              {[
+                "Space recently became unavailable",
+                "Storage requirements don't match our facility",
+                "Maintenance scheduled for requested dates",
+                "Pricing mismatch",
+                "Other custom reason"
+              ].map(reason => (
+                <label key={reason} className="flex items-center space-x-3 bg-gray-900/50 p-3 rounded-lg border border-gray-700 cursor-pointer hover:border-blue-500 transition-colors">
+                  <input
+                    type="radio"
+                    name="rejectReason"
+                    value={reason}
+                    checked={rejectionReason === reason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    className="text-blue-500 bg-gray-800 border-gray-600 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span className="text-gray-200 text-sm">{reason}</span>
+                </label>
+              ))}
+              {rejectionReason === "Other custom reason" && (
+                <textarea
+                  className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Type custom reason here..."
+                  rows={3}
+                  onChange={(e) => setRejectionReason(`Custom: ${e.target.value}`)}
+                />
+              )}
+            </div>
+            <div className="flex gap-3 justify-end pt-4">
+              <Button variant="outline" onClick={() => setSelectedRejectBooking(null)} className="border-gray-600 text-gray-300 hover:bg-gray-700">Cancel</Button>
+              <Button 
+                className="bg-red-600 hover:bg-red-700 text-white" 
+                onClick={() => handleOwnerRespond(selectedRejectBooking!, "reject", rejectionReason)}
+                disabled={respondingId === selectedRejectBooking?.metadata?.booking_id}
+              >
+                {respondingId === selectedRejectBooking?.metadata?.booking_id ? "Rejecting..." : "Confirm Rejection"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

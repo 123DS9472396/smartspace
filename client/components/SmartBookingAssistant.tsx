@@ -42,6 +42,41 @@ export function SmartBookingAssistant({ onBookingSelect, className }: SmartBooki
   const [analysis, setAnalysis] = useState<BookingAnalysis | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatHistory, setChatHistory] = useState<Array<{ role: 'user' | 'assistant'; content: string; warehouses?: WarehouseResult[] }>>([]);
+
+  // Unique localStorage key for chat
+  const chatStorageKey = 'smartspace_smartbooking_chat';
+
+  // Load chat from localStorage on mount
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem(chatStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setChatHistory(parsed);
+      }
+    } catch (e) {}
+  }, []);
+
+  // Persist chat to localStorage on change
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(chatStorageKey, JSON.stringify(chatHistory));
+    } catch (e) {}
+  }, [chatHistory]);
+
+  // Clear chat on tab switch to form
+  React.useEffect(() => {
+    if (activeTab === 'form') {
+      setChatHistory([]);
+      try { localStorage.removeItem(chatStorageKey); } catch (e) {}
+    }
+  }, [activeTab]);
+
+  // Explicit clear chat handler (optional, can add a button in chat tab if desired)
+  const clearChat = () => {
+    setChatHistory([]);
+    try { localStorage.removeItem(chatStorageKey); } catch (e) {}
+  };
   
   // Form state
   const [formData, setFormData] = useState<BookingRequirement>({
@@ -403,11 +438,25 @@ export function SmartBookingAssistant({ onBookingSelect, className }: SmartBooki
         {/* Chat-based search */}
         <TabsContent value="chat">
           <Card>
-            <CardHeader>
-              <CardTitle>Tell us what you need</CardTitle>
-              <CardDescription>
-                Describe your requirements in natural language
-              </CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Tell us what you need</CardTitle>
+                <CardDescription>
+                  Describe your requirements in natural language
+                </CardDescription>
+              </div>
+              <button
+                type="button"
+                onClick={clearChat}
+                className="ml-2 p-2 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-300 transition-colors text-xs font-medium border border-blue-200 dark:border-blue-700"
+                title="Clear chat"
+                style={{ minWidth: 0 }}
+              >
+                <span className="flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9M4 4l16 16M4 4l16 16" /></svg>
+                  Clear Chat
+                </span>
+              </button>
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[300px] mb-4 p-4 border rounded-lg">

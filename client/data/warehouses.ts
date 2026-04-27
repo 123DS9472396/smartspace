@@ -10,7 +10,7 @@ export interface WarehouseData {
   contactNo: string;
   status: 'Active' | 'Inactive' | 'Cancelled';
   remarks: string;
-  occupancy: number; // 0-1 (percentage as decimal)
+  // occupancy: number; // DEPRECATED — use real-time occupancy from backend analytics
   microRentalSpaces: number;
   emailId: string;
   pricing: number; // INR/sqft/month
@@ -99,12 +99,11 @@ const generateDescription = (warehouse: Partial<WarehouseData>): string => {
   const type = warehouse.warehouseType?.toLowerCase() || "storage";
   const district = warehouse.district;
   const capacity = warehouse.capacity || 0;
-  const occupancy = warehouse.occupancy || 0;
-
-  const availabilityText = occupancy < 0.3 ? "excellent availability" :
-    occupancy < 0.7 ? "good availability" : "limited availability";
-
-  return `Professional ${type} facility in ${district} with ${capacity.toLocaleString()} MT capacity. Currently showing ${availabilityText} with modern infrastructure and reliable operations. Strategic location with excellent connectivity for efficient logistics operations.`;
+  // const occupancy = warehouse.occupancy || 0;
+  // const availabilityText = occupancy < 0.3 ? "excellent availability" :
+  //   occupancy < 0.7 ? "good availability" : "limited availability";
+  // Availability text now handled by real-time backend analytics
+  return `Professional ${type} facility in ${district} with ${capacity.toLocaleString()} MT capacity. Modern infrastructure and reliable operations. Strategic location with excellent connectivity for efficient logistics operations.`;
 };
 
 // Convert CSV row to WarehouseData

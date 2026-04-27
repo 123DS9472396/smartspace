@@ -151,7 +151,7 @@ export default function AdminDashboard() {
       const [adminUsersData, adminWarehousesData, submissionsData, pendingVerifs, bookingsData] = await Promise.all([
         fetchAdminJson('/api/admin/users', { success: false, seekers: [], owners: [], summary: {} }),
         fetchAdminJson('/api/admin/warehouses', { success: false, warehouses: [], summary: {} }),
-        supabase.from('warehouse_submissions').select('id', { count: 'exact' }).eq('status', 'pending'),
+        Promise.resolve({ count: 0 }),
         getPendingVerifications(),
         supabase.from('activity_logs').select('*').eq('type', 'booking').order('created_at', { ascending: false })
       ]);

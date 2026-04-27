@@ -99,8 +99,8 @@ async function testGemini() {
     return false;
   }
   try {
-    console.log('🔄 Testing Gemini (1.5 Flash)...');
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+    console.log('🔄 Testing Gemini (2.5 Pro)...');
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

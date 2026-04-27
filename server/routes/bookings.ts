@@ -10,18 +10,45 @@ const normalizeBookingBlockIds = (blocks: any[]): string[] => {
     });
 };
 
+
+// Utility: Ensure activity_logs is always updated for booking events
+const upsertActivityLog = async ({
+    bookingId,
+    seekerId,
+    type = 'booking',
+    description,
+    metadata
+}) => {
+    if (!bookingId) {
+        // Insert new log
+        return await supabase
+            .from('activity_logs')
+            .insert({ seeker_id: seekerId, type, description, metadata })
+            .select()
+            .single();
+    } else {
+        // Update existing log
+        return await supabase
+            .from('activity_logs')
+            .update({ description, metadata })
+            .eq('id', bookingId)
+            .select()
+            .single();
+    }
+};
+
 const releaseWarehouseBlocks = async (warehouseId: string, blockIds: string[]) => {
-    if (!warehouseId || !blockIds.length) return;
+        if (!warehouseId || !blockIds.length) return;
 
-    let warehouseData: any = null;
-    let table = 'warehouses';
-    let key = 'wh_id';
+        let warehouseData: any = null;
+        let table = 'warehouses';
+        let key = 'wh_id';
 
-    let { data: mainWarehouse } = await supabase
-        .from('warehouses')
-        .select('id, wh_id, blocks, total_blocks')
-        .eq('wh_id', warehouseId)
-        .maybeSingle();
+        let { data: mainWarehouse } = await supabase
+                .from('warehouses')
+                .select('id, wh_id, blocks, total_blocks')
+                .eq('wh_id', warehouseId)
+                .maybeSingle();
 
     if (!mainWarehouse) {
         const { data: byId } = await supabase
@@ -111,6 +138,29 @@ export const getSeekerBookings: RequestHandler = async (req, res) => {
             });
         }
 
+        // Collect all warehouse IDs that need a live name lookup
+        const logsNeedingNameLookup = (bookingsData || []).filter(
+            log => (!log.metadata?.warehouse_name || log.metadata.warehouse_name === 'Unknown Warehouse') && log.metadata?.warehouse_id
+        );
+
+        // Batch-fetch names and locations
+        const warehouseCache: Record<string, { name: string, city: string, state: string, address: string }> = {};
+        if (logsNeedingNameLookup.length > 0) {
+            const uniqueIds = [...new Set(logsNeedingNameLookup.map(l => l.metadata.warehouse_id))];
+            // Build OR filter for both id AND wh_id
+            const orFilter = uniqueIds.map(id => `id.eq.${id},wh_id.eq.${id}`).join(',');
+            const { data: foundWarehouses } = await supabase
+                .from('warehouses')
+                .select('id, wh_id, name, city, state, address')
+                .or(orFilter);
+                
+            (foundWarehouses || []).forEach(w => {
+                const info = { name: w.name, city: w.city, state: w.state, address: w.address };
+                if (w.id) warehouseCache[w.id] = info;
+                if (w.wh_id) warehouseCache[w.wh_id] = info;
+            });
+        }
+
         // Transform activity logs into seeker booking format with status mapping
         const seekerBookings = [];
 
@@ -151,19 +201,14 @@ export const getSeekerBookings: RequestHandler = async (req, res) => {
                 address: metadata.warehouse_address || 'Address not available'
             };
 
-            // If we have warehouse_id and missing info, fetch from database
-            if (warehouseId && !metadata.warehouse_name) {
-                const { data: warehouseData } = await supabase
-                    .from('warehouses')
-                    .select('name, city, state, address')
-                    .eq('id', warehouseId)
-                    .single();
-
-                if (warehouseData) {
+            // If we have warehouse_id and missing info, fetch from cache
+            if (warehouseId && (!metadata.warehouse_name || metadata.warehouse_name === 'Unknown Warehouse')) {
+                const cachedData = warehouseCache[warehouseId];
+                if (cachedData) {
                     warehouseInfo = {
-                        name: warehouseData.name,
-                        location: `${warehouseData.city}, ${warehouseData.state}`,
-                        address: warehouseData.address
+                        name: cachedData.name,
+                        location: `${cachedData.city}, ${cachedData.state}`,
+                        address: cachedData.address
                     };
                 }
             }

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartSpace Team Module Distribution - Print/PDF</title>
+  <style>
+    :root {
+      --text: #121212;
+      --muted: #3f3f3f;
+      --line: #d7d7d7;
+      --h: #1a3d7c;
+      --accent: #0e7a5e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background: #fff;
+      line-height: 1.5;
+    }
+    .doc {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+    h1, h2, h3 { margin: 0 0 10px; }
+    h1 { color: var(--h); font-size: 30px; }
+    h2 {
+      color: var(--h);
+      font-size: 22px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 6px;
+      margin-top: 26px;
+    }
+    h3 { color: var(--accent); font-size: 18px; margin-top: 20px; }
+    p, li { color: var(--muted); font-size: 15px; }
+    ul { margin: 8px 0 0 20px; }
+    .box {
+      border: 1px solid var(--line);
+      padding: 12px;
+      border-radius: 8px;
+      margin: 10px 0;
+      background: #fbfbfb;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .meta .box b { color: #111; }
+    @media (max-width: 700px) {
+      .meta { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body { background: #fff; }
+      .doc { max-width: 100%; padding: 12mm; }
+      h2 { page-break-after: avoid; }
+      h3, .box { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="doc">
+    <h1>SmartSpace Team Module Distribution Guide</h1>
+    <p>Prepared for project execution planning and external presentation.</p>
+
+    <div class="meta">
+      <div class="box"><b>Seeker Module</b><br/>Dipesh + Manthan</div>
+      <div class="box"><b>Admin Module</b><br/>Pranjal</div>
+      <div class="box"><b>Owner + DB + Data</b><br/>Sahil</div>
+    </div>
+
+    <h2>1. Architecture Summary</h2>
+    <ul>
+      <li>Frontend: React + TypeScript in client.</li>
+      <li>Backend: Express + TypeScript in server.</li>
+      <li>Database: Supabase Postgres with RLS policies.</li>
+      <li>Shared logic: shared folder for API types and recommendation engines.</li>
+      <li>Data operations: database SQL scripts, supabase migrations, and scripts imports/fixes.</li>
+    </ul>
+
+    <h2>2. Seeker Module Ownership (Dipesh + Manthan)</h2>
+    <h3>Primary files</h3>
+    <ul>
+      <li>Pages: client/pages/Warehouses.tsx, WarehouseDetail.tsx, SeekerHub.tsx, SeekerBookingsPage.tsx, Saved.tsx, Compare.tsx, SmartBooking.tsx.</li>
+      <li>Components: GridBlockSelector.tsx, BlockGridCSS3D.tsx, BookingSummary.tsx, BookingSummary3D.tsx, InquiryModal.tsx, ScheduleVisitModal.tsx.</li>
+      <li>Services/Hooks: client/services/warehouseService.ts, blockBookingService.ts, smartBookingService.ts, aiService.ts, client/hooks/use-recommendations.ts.</li>
+      <li>Backend routes: server/routes/bookings.ts, simple-booking.ts, saved.ts, activity.ts, schedule-visit.ts, smartBooking.ts.</li>
+    </ul>
+    <div class="box">
+      <b>What this module does:</b> seeker discovery, details, booking initiation, booking history, saved interactions, and recommendation-assisted decisions.
+    </div>
+
+    <h2>3. Admin Module Ownership (Pranjal)</h2>
+    <h3>Primary files</h3>
+    <ul>
+      <li>Pages: client/pages/AdminDashboard.tsx, AdminBookingsPage.tsx, AdminWarehousesPage.tsx, AdminWarehouseSubmissionsPage.tsx, AdminUsersPage.tsx, AdminVerificationPage.tsx, AdminAnalyticsPage.tsx.</li>
+      <li>Routes: server/routes/admin-bookings.ts, admin-warehouses.ts, admin-warehouse-submissions.ts, admin-user-activity.ts, analytics.ts, approveSubmission.ts.</li>
+      <li>Routing integration: server/index.ts.</li>
+    </ul>
+    <div class="box">
+      <b>What this module does:</b> platform governance through booking moderation, warehouse review, user-level administration, and performance analytics.
+    </div>
+
+    <h2>4. Owner + Database + Data Ownership (Sahil)</h2>
+    <h3>Primary files</h3>
+    <ul>
+      <li>Owner pages: client/pages/ListProperty.tsx, OwnerProperties.tsx, OwnerAnalyticsPage.tsx, OwnerNotificationsPage.tsx, OwnerProfilePage.tsx, SubmissionView.tsx.</li>
+      <li>Owner routes: server/routes/owner-bookings.ts, warehouse-submissions.ts, warehouseSubmission.ts, recommend-price.ts, product-pricing.ts, cities.ts.</li>
+      <li>Database: database/*.sql, supabase/migrations/*.sql.</li>
+      <li>Data and setup scripts: scripts/import-all-warehouses.ts, import-via-api.ts, generate-warehouse-sql.ts, setup-database.ts, deploy-database-schema.ts, fix-warehouse-data-quality.js, fix-owner-ids.js, verify-data.js.</li>
+      <li>Supabase clients: server/lib/supabaseClient.ts and client/services/supabaseClient.ts.</li>
+    </ul>
+    <div class="box">
+      <b>What this module does:</b> owner lifecycle management, schema correctness, RLS/policy control, and reliable high-volume data onboarding.
+    </div>
+
+    <h2>5. Shared Cross-Team Files</h2>
+    <ul>
+      <li>shared/advanced-llm-service.ts: multi-provider LLM fallback orchestration.</li>
+      <li>shared/advanced-ml-algorithms.ts: recommendation model logic.</li>
+      <li>shared/api.ts: shared API request/response contracts.</li>
+      <li>shared/recommendation.ts: recommendation utility logic.</li>
+    </ul>
+    <div class="box">
+      <b>Governance note:</b> These files should be cross-reviewed by all module leads before release.
+    </div>
+
+    <h2>6. External Presentation Script</h2>
+    <ul>
+      <li>Dipesh + Manthan: seeker journey from search to booking and recommendations.</li>
+      <li>Pranjal: admin moderation and analytics workflows.</li>
+      <li>Sahil: owner operations plus database/migration/data reliability framework.</li>
+    </ul>
+
+    <h2>7. Delivery Checklist</h2>
+    <ul>
+      <li>No file relocation required.</li>
+      <li>No code changes required for ownership split.</li>
+      <li>Each owner validates feature behavior + API contracts + demo path.</li>
+    </ul>
+  </div>
+</body>
+</html>

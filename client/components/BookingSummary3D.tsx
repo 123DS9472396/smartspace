@@ -125,11 +125,11 @@ export default function BookingSummary3D({
       // Reset form
       setCustomerDetails({ name: '', email: '', phone: '', company: '' });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Booking failed:', error);
       toast({
         title: "Booking Failed",
-        description: "There was an error processing your booking. Please try again.",
+        description: error.message || "There was an error processing your booking. Please try again.",
         variant: "destructive",
       });
     } finally {

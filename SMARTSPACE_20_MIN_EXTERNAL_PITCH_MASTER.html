@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartSpace 20-Min External Pitch Master Script</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --text: #1d2733;
+      --muted: #4b5c70;
+      --primary: #0d3b66;
+      --accent: #0f8b8d;
+      --highlight: #f4b400;
+      --border: #d8e1ed;
+      --note: #fff3cd;
+      --note-border: #e9c46a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.62;
+    }
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #0d3b66 0%, #145da0 60%, #1d7874 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15);
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      letter-spacing: 0.2px;
+    }
+    .hero p {
+      margin: 0;
+      opacity: 0.95;
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.04);
+    }
+    h2 {
+      margin: 0 0 10px;
+      font-size: 1.28rem;
+      color: var(--primary);
+    }
+    h3 {
+      margin: 12px 0 8px;
+      font-size: 1.03rem;
+      color: #145da0;
+    }
+    p { margin: 8px 0; }
+    ul, ol {
+      margin: 8px 0 8px 20px;
+      padding: 0;
+    }
+    li { margin: 5px 0; }
+    .chip {
+      display: inline-block;
+      margin: 3px 6px 3px 0;
+      padding: 4px 10px;
+      border: 1px solid #b8cbe4;
+      border-radius: 999px;
+      background: #eef5ff;
+      color: #214d88;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .time {
+      display: inline-block;
+      background: #e8f7f7;
+      color: #0b6466;
+      border: 1px solid #9ad6d7;
+      border-radius: 8px;
+      padding: 2px 8px;
+      font-weight: 700;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+    .note {
+      background: var(--note);
+      border: 1px solid var(--note-border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #6d5200;
+      margin-top: 10px;
+      font-size: 0.95rem;
+    }
+    .speak {
+      border-left: 4px solid var(--accent);
+      background: #f9fcff;
+      padding: 10px 12px;
+      margin: 8px 0;
+      border-radius: 8px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #edf4ff;
+      color: #1d4e89;
+    }
+    .muted { color: var(--muted); }
+    .highlight { color: #9a6a00; font-weight: 700; }
+    .footer {
+      text-align: center;
+      color: #5d6e83;
+      font-size: 13px;
+      margin: 22px 0 4px;
+    }
+    @media print {
+      body { background: #fff; }
+      .panel, .hero { box-shadow: none; break-inside: avoid; }
+      .hero { color: #000; background: #fff; border: 1px solid #bbb; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>SmartSpace - 20 Minute External Presentation Master Script</h1>
+      <p>Prepared for Dipesh and team | Final Year B.E. Panel Presentation | Maharashtra-focused warehouse intelligence platform</p>
+    </section>
+
+    <section class="panel">
+      <h2>How to Use This Document</h2>
+      <ul>
+        <li>This is speaking content, not slide notes only. You can read directly in viva style.</li>
+        <li>Each section includes suggested timing and handover line.</li>
+        <li>You can copy this full content to Word, then Save As PDF.</li>
+      </ul>
+      <div>
+        <span class="chip">Team: Dipesh + Manthan + Pranjal + Sahil</span>
+        <span class="chip">Duration: 20 minutes</span>
+        <span class="chip">Flow: Intro -> Problem -> Modules -> AI/ML -> DB -> USP -> Future -> Q&A</span>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Section 1: Opening Script <span class="time">2 min</span></h2>
+      <div class="speak">
+        <p>Good morning respected sir and ma'am.</p>
+        <p>I am Dipesh Sharma from B.E. Computer Engineering, A. P. Shah Institute of Technology, Thane. Today, we are presenting our final year project: SmartSpace - Intelligent Warehouse Recommendation Platform for Maharashtra.</p>
+        <p>Our team distribution is as follows:</p>
+        <ul>
+          <li>Dipesh Sharma and Manthan Shinde: Seeker Module</li>
+          <li>Pranjal Zambre: Admin Module</li>
+          <li>Sahil Shinde: Owner Module, Supabase Database, Data Migration and Import Pipelines</li>
+        </ul>
+        <p>Today, we will present the complete end-to-end workflow: from seeker landing and warehouse discovery, to owner listing and booking response, to admin verification and governance, supported by a hybrid ML and LLM intelligence layer.</p>
+      </div>
+      <div class="note">Presenter tip: Speak slowly and confidently in this section. This sets authority for the rest of the presentation.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Section 2: Problem Statement (Maharashtra Context) <span class="time">3 min</span></h2>
+      <div class="speak">
+        <p>Maharashtra has one of India's largest warehousing and logistics ecosystems, including MIDC zones, cold storage infrastructure, pharma-grade facilities, FMCG hubs, and dark stores used by quick-commerce companies.</p>
+        <p>However, discovery and booking are still fragmented and mostly manual. Businesses often depend on brokers, phone calls, and physical visits. There is no single trusted platform where they can compare verified options with real-time occupancy and intelligent recommendations.</p>
+        <p>Core pain points we identified:</p>
+        <ul>
+          <li>No centralized warehouse visibility</li>
+          <li>Manual and slow decision cycle</li>
+          <li>Weak trust and verification at listing level</li>
+          <li>No intelligent matching for user intent</li>
+          <li>Cold-start issue for new listings in traditional recommendation systems</li>
+          <li>Spreadsheet-driven operations causing data inconsistency</li>
+        </ul>
+        <p>So our problem statement was clear: build a trusted, role-based, AI-assisted warehouse platform specifically aligned to Maharashtra logistics realities.</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Section 3: Solution Positioning - What SmartSpace Is <span class="time">2 min</span></h2>
+      <div class="speak">
+        <p>SmartSpace is a full-stack warehouse intelligence and operations platform with three role-based modules: Seeker, Owner, and Admin.</p>
+        <p>Our platform combines:</p>
+        <ul>
+          <li>Machine Learning ensemble for ranking and matching</li>
+          <li>LLM layer for conversational assistance, semantic parsing, and recommendation explanation</li>
+          <li>Supabase Postgres with Row-Level Security for secure multi-role workflows</li>
+          <li>End-to-end booking lifecycle with activity logs, status transitions, and analytics impact</li>
+        </ul>
+      </div>
+      <p class="muted">Stack summary: React + TypeScript + Vite frontend, Express backend, Supabase data layer, shared AI/ML services.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Section 4: Complete Seeker Workflow <span class="time">4 min</span></h2>
+      <h3>Narration Script (Dipesh + Manthan)</h3>
+      <div class="speak">
+        <p>Now I will explain the Seeker journey from start to finish.</p>
+        <p>Step 1: Seeker lands on the platform and opens warehouse browsing pages.</p>
+        <p>Step 2: Through search and filters, seeker narrows down by city, district, price, area, warehouse type, and amenities.</p>
+        <p>Step 3: On warehouse detail page, seeker sees occupancy, pricing, amenities, and block-level visualization.</p>
+        <p>Step 4: Seeker selects blocks and booking dates, then submits booking request.</p>
+        <p>Step 5: Booking gets stored, status tracked, and seeker can view booking history, saved warehouses, activity trail, and comparison views.</p>
+        <p>Step 6: Smart Booking Assistant supports natural language requests and recommendation guidance.</p>
+      </div>
+
+      <h3>Primary Seeker Files</h3>
+      <table>
+        <tr><th>Layer</th><th>Files</th><th>Role</th></tr>
+        <tr><td>Pages</td><td>client/pages/Warehouses.tsx, client/pages/WarehouseDetail.tsx, client/pages/SeekerHub.tsx, client/pages/SeekerBookingsPage.tsx, client/pages/Saved.tsx, client/pages/Compare.tsx, client/pages/SmartBooking.tsx, client/pages/MLRecommendationsPage.tsx</td><td>Discovery, detail, booking, history, recommendation UX</td></tr>
+        <tr><td>Components</td><td>client/components/GridBlockSelector.tsx, client/components/BlockGridCSS3D.tsx, client/components/BookingSummary.tsx, client/components/BookingSummary3D.tsx, client/components/InquiryModal.tsx, client/components/ScheduleVisitModal.tsx, client/components/SmartBookingAssistant.tsx</td><td>Interactive booking and assistant experience</td></tr>
+        <tr><td>Services/Hooks</td><td>client/services/warehouseService.ts, client/services/blockBookingService.ts, client/services/smartBookingService.ts, client/services/aiService.ts, client/hooks/use-recommendations.ts</td><td>Data fetch, booking API calls, AI integration, recommendation state</td></tr>
+        <tr><td>Backend</td><td>server/routes/bookings.ts, server/routes/simple-booking.ts, server/routes/saved.ts, server/routes/activity.ts, server/routes/schedule-visit.ts, server/routes/smartBooking.ts</td><td>Booking lifecycle and seeker endpoints</td></tr>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Section 5: Complete Owner Workflow <span class="time">2.5 min</span></h2>
+      <div class="speak">
+        <p>I will now hand over to Sahil for Owner Module and data layer explanation.</p>
+        <p>Owner flow starts from property listing. Owner submits warehouse details, media, and verification-relevant metadata.</p>
+        <p>Submission goes into pending queue for admin review.</p>
+        <p>After approval, listing goes live for seekers.</p>
+        <p>Owner receives booking requests and can approve or reject them.</p>
+        <p>Owner dashboard then shows operational analytics and pricing insight features.</p>
+      </div>
+
+      <h3>Primary Owner Files</h3>
+      <table>
+        <tr><th>Layer</th><th>Files</th><th>Role</th></tr>
+        <tr><td>Pages</td><td>client/pages/ListProperty.tsx, client/pages/OwnerProperties.tsx, client/pages/OwnerAnalyticsPage.tsx, client/pages/OwnerNotificationsPage.tsx, client/pages/OwnerProfilePage.tsx, client/pages/SubmissionView.tsx</td><td>Listing, portfolio management, analytics, notifications</td></tr>
+        <tr><td>Backend Routes</td><td>server/routes/owner-bookings.ts, server/routes/warehouse-submissions.ts, server/routes/warehouseSubmission.ts, server/routes/recommend-price.ts, server/routes/product-pricing.ts, server/routes/cities.ts</td><td>Owner booking actions, submissions, pricing intelligence</td></tr>
+        <tr><td>Owner Support</td><td>client/components/PricingRecommendationModal.tsx, client/components/ProductPricingCalculator.tsx, client/services/verificationService.ts, client/services/documentAnalysisService.ts</td><td>Owner-side intelligence and verification helpers</td></tr>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Section 6: Complete Admin Workflow <span class="time">2.5 min</span></h2>
+      <div class="speak">
+        <p>I now hand over to Pranjal for Admin Module.</p>
+        <p>Admin dashboard is the central governance panel.</p>
+        <p>Admin reviews warehouse submissions and moderates approvals.</p>
+        <p>Admin moderates booking statuses, monitors KPIs, and reviews user activity.</p>
+        <p>Admin analytics provides system-level health and trend visibility.</p>
+      </div>
+
+      <h3>Primary Admin Files</h3>
+      <table>
+        <tr><th>Layer</th><th>Files</th><th>Role</th></tr>
+        <tr><td>Pages</td><td>client/pages/AdminDashboard.tsx, client/pages/AdminBookingsPage.tsx, client/pages/AdminWarehousesPage.tsx, client/pages/AdminWarehouseSubmissionsPage.tsx, client/pages/AdminUsersPage.tsx, client/pages/AdminVerificationPage.tsx, client/pages/AdminAnalyticsPage.tsx</td><td>Moderation, governance, and insights</td></tr>
+        <tr><td>Backend Routes</td><td>server/routes/admin-bookings.ts, server/routes/admin-warehouses.ts, server/routes/admin-warehouse-submissions.ts, server/routes/admin-user-activity.ts, server/routes/analytics.ts, server/routes/approveSubmission.ts</td><td>Admin action execution and analytics APIs</td></tr>
+        <tr><td>Route Integration</td><td>server/index.ts</td><td>Central route registration</td></tr>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>Section 7: LLM Focus (High Priority USP) <span class="time">2 min</span></h2>
+      <div class="speak">
+        <p>Now I will explain our LLM contribution, which is a core USP.</p>
+        <p>In SmartSpace, LLM is used as a semantic intelligence layer, not just as a chatbot.</p>
+        <p>Use cases include:</p>
+        <ul>
+          <li>Natural language seeker queries into structured booking/search intent</li>
+          <li>Smart booking assistant for conversational recommendations</li>
+          <li>Context-aware recommendation explanation so users understand why a warehouse is suggested</li>
+          <li>Owner support in price and market insight flows</li>
+          <li>Fail-safe fallback orchestration in shared LLM service architecture</li>
+        </ul>
+      </div>
+      <p class="muted">Shared LLM files: shared/advanced-llm-service.ts, shared/gemini-ai.ts, shared/gemini-api.ts, client/services/aiService.ts.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Section 8: ML Focus - 5 Model Explanation and Why <span class="time">2 min</span></h2>
+      <div class="speak">
+        <p>Our recommendation engine uses 5 models to balance precision, stability, and ranking quality:</p>
+        <ol>
+          <li>KNN: nearest-pattern match for proximity-based relevance</li>
+          <li>Random Forest: robust handling of mixed features</li>
+          <li>Gradient Boosting: iterative improvement for difficult cases</li>
+          <li>Neural pattern layer: captures non-linear behavior</li>
+          <li>Hybrid stacking: combines strengths of multiple estimators into final rank</li>
+        </ol>
+        <p>Why this set? Because no single model is enough for this domain. Ensemble strategy improves generalization and stability across diverse warehouse profiles.</p>
+      </div>
+      <p><span class="highlight">Presentation metric line:</span> Our measured recommendation performance is around 87.9% with strong top-result relevance, making recommendations practical and reliable for real decisions.</p>
+      <p class="muted">Shared ML files: shared/advanced-ml-algorithms.ts, shared/ml-algorithms.ts, shared/recommendation.ts.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Section 9: Complete Booking Workflow (USP Story) <span class="time">1.5 min</span></h2>
+      <div class="speak">
+        <p>Booking lifecycle is one of our strongest USPs because it is fully traceable and role-connected.</p>
+        <ol>
+          <li>Owner creates listing submission.</li>
+          <li>Admin reviews and approves listing.</li>
+          <li>Seeker discovers listing, selects blocks, submits booking.</li>
+          <li>Owner approves or rejects booking request.</li>
+          <li>System updates booking status and occupancy impact.</li>
+          <li>Activity logs and dashboards reflect real state transitions.</li>
+        </ol>
+      </div>
+      <p class="muted">Critical consistency point: booking transitions and activity logs are aligned to avoid analytics drift.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Section 10: Supabase Tables and Data Layer <span class="time">1.5 min</span></h2>
+      <h3>Operational Tables</h3>
+      <p>profiles, owner_profiles, seeker_profiles, warehouses, warehouse_submissions, bookings, saved_warehouses, activity_logs, inquiries, reviews, notifications, verification_queue, payment_transactions, admin_notifications.</p>
+      <h3>Analytics and Support Tables</h3>
+      <p>pricing_reference, ml_recommendations, product_market_prices, storage_rate_config, document_verifications, audit_logs, warehouse_views, search_history, verification_requests, user_interactions.</p>
+      <h3>Data Pipeline Files</h3>
+      <p>scripts/import-all-warehouses.ts, scripts/import-via-api.ts, scripts/generate-warehouse-sql.ts, scripts/setup-database.ts, scripts/deploy-database-schema.ts, scripts/verify-data.js, scripts/fix-warehouse-data-quality.js, scripts/fix-owner-ids.js, scripts/comprehensive-warehouse-fix.js.</p>
+      <p class="muted">Schema sources: database/*.sql and supabase/migrations/*.sql.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Section 11: Upcoming Improvements (Future Scope) <span class="time">1 min</span></h2>
+      <ul>
+        <li>More advanced retrieval and ranking for multi-intent seeker queries</li>
+        <li>Deeper owner-side demand forecasting and revenue planning</li>
+        <li>Expanded verification automation and anomaly detection</li>
+        <li>Workflow automation for booking dispute management</li>
+        <li>Broader geographic scaling beyond Maharashtra once validation completes</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>Section 12: Final Closing Script <span class="time">1 min</span></h2>
+      <div class="speak">
+        <p>In conclusion, SmartSpace is not just a listing portal. It is a complete warehouse intelligence and operations platform built for real-world Maharashtra logistics challenges.</p>
+        <p>We combined role-based workflow design, secure data architecture, machine learning ranking, and LLM-based semantic intelligence into one production-style system.</p>
+        <p>Our platform demonstrates practical impact through faster discovery, better matching quality, stronger trust controls, and end-to-end process visibility.</p>
+        <p>Thank you sir and ma'am. We are ready for your questions.</p>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Rapid Q&A Cheat Sheet (Optional)</h2>
+      <h3>Why Hybrid ML + LLM?</h3>
+      <p>ML gives ranking precision and scalable scoring. LLM adds semantic understanding and explanation quality. Together they solve both accuracy and usability.</p>
+      <h3>How do you handle reliability?</h3>
+      <p>Fallback orchestration and modular routing ensure continuity of recommendation and booking flows.</p>
+      <h3>Why Maharashtra-first?</h3>
+      <p>It is a high-complexity logistics market, making it ideal for validating scalability and practical impact.</p>
+      <h3>What is your strongest USP?</h3>
+      <p>Complete role-linked booking lifecycle with intelligent recommendation and explainable assistant workflows.</p>
+    </section>
+
+    <p class="footer">SmartSpace External Pitch Master | Ready for Word copy-paste or Print to PDF</p>
+  </div>
+</body>
+</html>

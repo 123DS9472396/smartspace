@@ -154,6 +154,19 @@ export const blockBookingService = {
       if (response.ok) {
         const result = await response.json();
         console.log('✅ Database booking created successfully:', result.booking_id || bookingId);
+        
+        // ML Feedback Loop: Log booking submit
+        fetch('/api/ml/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: customerDetails.email || 'anonymous',
+            warehouse_id: warehouseId,
+            event_type: 'booking_submit',
+            context: { total_amount: bookingData.totalAmount }
+          })
+        }).catch(e => console.warn('ML feedback failed:', e));
+
       } else {
         const errorData = await response.json();
         console.error('❌ Database booking failed:', errorData);

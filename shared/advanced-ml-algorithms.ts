@@ -432,7 +432,8 @@ function normalizeDistrictName(name: string): string {
 export function advancedMLRecommend(
   warehouses: any[],
   preferences: RecommendationPreferences,
-  limit: number = 50
+  limit: number = 50,
+  trainedWeights?: Record<string, number>
 ): RecommendationResult[] {
   console.log(`🧠 Running Advanced ML Algorithms on ${warehouses.length} warehouses...`);
   console.log(`📍 Preferences:`, JSON.stringify(preferences));
@@ -488,12 +489,13 @@ export function advancedMLRecommend(
     };
     
     // Ensemble: weighted combination of all algorithms
+    const weights = trainedWeights || ML_CONFIG.ensemble.weights;
     const ensembleScore = 
-      algorithmScores.knn * ML_CONFIG.ensemble.weights.knn +
-      algorithmScores.contentBased * ML_CONFIG.ensemble.weights.contentBased +
-      algorithmScores.collaborative * ML_CONFIG.ensemble.weights.collaborative +
-      algorithmScores.neural * ML_CONFIG.ensemble.weights.neural +
-      algorithmScores.bayesian * ML_CONFIG.ensemble.weights.bayesian;
+      algorithmScores.knn * (weights.knn ?? ML_CONFIG.ensemble.weights.knn) +
+      algorithmScores.contentBased * (weights.contentBased ?? ML_CONFIG.ensemble.weights.contentBased) +
+      algorithmScores.collaborative * (weights.collaborative ?? ML_CONFIG.ensemble.weights.collaborative) +
+      algorithmScores.neural * (weights.neural ?? ML_CONFIG.ensemble.weights.neural) +
+      algorithmScores.bayesian * (weights.bayesian ?? ML_CONFIG.ensemble.weights.bayesian);
     
     // Scale up the ensemble score to give more realistic percentages (0-1 -> 0.5-1.0 range)
     // Good matches should show 85%+, not 50%

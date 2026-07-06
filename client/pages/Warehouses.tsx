@@ -552,6 +552,13 @@ export default function Warehouses() {
                   <Filter className="h-4 w-4" />
                   <span>Advanced Filters</span>
                 </Button>
+                <Button
+                  onClick={() => navigate('/compare')}
+                  className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  <List className="h-4 w-4" />
+                  <span>Compare</span>
+                </Button>
               </div>
 
               {/* Advanced Filters */}

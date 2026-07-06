@@ -337,7 +337,33 @@ async function callGemini(prompt: string): Promise<LLMResponse | null> {
 }
 
 /**
- * Main LLM recommendation function with fallback chain
+ * Zero-Cost Infrastructure: LLM Response Cache
+ * Prevents runaway API costs by caching identical queries for 24 hours
+ */
+interface CacheEntry {
+  response: {
+    recommendations: LLMRecommendation[];
+    provider: string;
+    success: boolean;
+  };
+  timestamp: number;
+}
+const llmCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Simple string hashing function for cache keys
+function hashString(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return hash.toString(36);
+}
+
+/**
+ * Main LLM recommendation function with fallback chain and caching
  */
 export async function getLLMRecommendations(
   warehouses: any[],
@@ -348,6 +374,14 @@ export async function getLLMRecommendations(
   success: boolean;
 }> {
   const prompt = generateAdvancedPrompt(warehouses, preferences);
+  const cacheKey = hashString(prompt);
+
+  // Check cache to save API costs
+  const cached = llmCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+    console.log(`⚡ CACHE HIT: Served LLM recommendations from zero-cost memory cache`);
+    return cached.response;
+  }
   
   // Try providers in order: Groq (fastest) → OpenRouter → Gemini
   const providers = [
@@ -361,11 +395,25 @@ export async function getLLMRecommendations(
       const result = await provider.fn();
       if (result && result.recommendations && result.recommendations.length > 0) {
         console.log(`✅ Using ${provider.name} for recommendations`);
-        return {
+        const finalResponse = {
           recommendations: result.recommendations,
           provider: result.provider || provider.name,
           success: true
         };
+        
+        // Save to cache for zero-cost subsequent calls
+        llmCache.set(cacheKey, {
+          response: finalResponse,
+          timestamp: Date.now()
+        });
+        
+        // Clean up old cache entries if it gets too large (max 100 entries)
+        if (llmCache.size > 100) {
+          const oldestKey = llmCache.keys().next().value;
+          if (oldestKey) llmCache.delete(oldestKey);
+        }
+
+        return finalResponse;
       }
     } catch (error) {
       console.log(`${provider.name} failed, trying next...`);

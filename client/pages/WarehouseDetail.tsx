@@ -157,6 +157,22 @@ export default function WarehouseDetail() {
     fetchWarehouse();
   }, [id]);
 
+  // ML Feedback Loop: Log view event
+  useEffect(() => {
+    if (warehouse?.id) {
+      fetch('/api/ml/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user?.id || 'anonymous',
+          warehouse_id: warehouse.id,
+          event_type: 'view',
+          context: { source: 'detail_page' }
+        })
+      }).catch(e => console.warn('ML feedback view log failed:', e));
+    }
+  }, [warehouse?.id, user?.id]);
+
   // Check if warehouse is saved on load (with localStorage fallback)
   useEffect(() => {
     const checkSavedStatus = async () => {
@@ -426,10 +442,22 @@ export default function WarehouseDetail() {
         setIsFavorited(data.saved);
         toast({
           title: data.saved ? "Warehouse Saved!" : "Warehouse Removed",
-          description: data.saved 
-            ? "Added to your saved warehouses" 
-            : "Removed from your saved warehouses",
+          description: data.saved ? "This warehouse has been added to your saved list." : "This warehouse has been removed from your saved list.",
         });
+
+        // ML Feedback Loop: Log save event
+        if (data.saved) {
+          fetch('/api/ml/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: user.id,
+              warehouse_id: warehouse.id,
+              event_type: 'save',
+              context: { action: 'toggle_saved' }
+            })
+          }).catch(e => console.warn('ML feedback save log failed:', e));
+        }
       } else {
         // Revert localStorage if server failed
         if (newSavedState) {
@@ -503,53 +531,123 @@ export default function WarehouseDetail() {
 
     setBookingLoading(true);
     try {
-      const response = await fetch('/api/bookings/blocks', {
+      // 1. Create Razorpay Order
+      const orderRes = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          seeker_id: user.id,
-          warehouse_id: warehouse.id,
-          blocks: [{ id: 'area-booking', area: areaToBook }],
-          start_date: bookingStartDate,
-          end_date: bookingEndDate,
-          total_amount: areaToBook * warehouse.price_per_sqft,
-          payment_method: 'online',
-          goods_type: bookingGoodsType,
-          customer_details: {
-            name: profile?.name || user.email,
-            email: user.email,
-            phone: profile?.phone || 'N/A'
-          }
-        })
+        body: JSON.stringify({ amount: areaToBook * warehouse.price_per_sqft })
       });
-
-      const result = await response.json();
-      if (result.success) {
-        // Show confirmation modal instead of just toast
-        setLastBooking({
-          id: result.booking?.id || 'booking-' + Date.now(),
-          warehouseName: warehouse.name,
-          warehouseLocation: `${warehouse.city}, ${warehouse.state}`,
-          startDate: bookingStartDate,
-          endDate: bookingEndDate,
-          area: areaToBook,
-          totalAmount: areaToBook * warehouse.price_per_sqft,
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        });
-        setShowConfirmation(true);
-        showSimpleNotification('success', 'Booking Submitted!', 'Your booking request has been sent for admin approval');
-        setBookingStartDate('');
-        setBookingEndDate('');
-        setBookingArea('');
-        setBookingGoodsType('');
-      } else {
-        showSimpleNotification('error', 'Booking Failed', result.error || 'Something went wrong');
+      const orderData = await orderRes.json();
+      if (!orderData.success) {
+        showSimpleNotification('error', 'Payment Error', orderData.error || 'Failed to initialize payment');
+        setBookingLoading(false);
+        return;
       }
+
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_dummy_key_id',
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'SmartSpace',
+        description: `Booking for ${warehouse.name}`,
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          try {
+            // Verify payment signature
+            const verifyRes = await fetch('/api/payments/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const verifyData = await verifyRes.json();
+            
+            if (!verifyData.success) {
+              showSimpleNotification('error', 'Verification Failed', verifyData.error);
+              setBookingLoading(false);
+              return;
+            }
+
+            // 3. Finalize Booking
+            const bookingRes = await fetch('/api/bookings/blocks', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                seeker_id: user.id,
+                warehouse_id: warehouse.id,
+                blocks: [{ id: 'area-booking', area: areaToBook }],
+                start_date: bookingStartDate,
+                end_date: bookingEndDate,
+                total_amount: areaToBook * warehouse.price_per_sqft,
+                payment_method: 'online',
+                razorpay_payment_id: response.razorpay_payment_id,
+                goods_type: bookingGoodsType,
+                customer_details: {
+                  name: profile?.name || user.email,
+                  email: user.email,
+                  phone: profile?.phone || 'N/A'
+                }
+              })
+            });
+
+            const result = await bookingRes.json();
+            if (result.success) {
+              setLastBooking({
+                id: result.booking?.id || 'booking-' + Date.now(),
+                warehouseName: warehouse.name,
+                warehouseLocation: `${warehouse.city}, ${warehouse.state}`,
+                startDate: bookingStartDate,
+                endDate: bookingEndDate,
+                area: areaToBook,
+                totalAmount: areaToBook * warehouse.price_per_sqft,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+              });
+              setShowConfirmation(true);
+              showSimpleNotification('success', 'Booking Submitted!', 'Your booking request has been sent for admin approval');
+              setBookingStartDate('');
+              setBookingEndDate('');
+              setBookingArea('');
+              setBookingGoodsType('');
+            } else {
+              showSimpleNotification('error', 'Booking Failed', result.error || 'Something went wrong');
+            }
+          } catch (err) {
+            console.error('Finalize booking error:', err);
+            showSimpleNotification('error', 'Error', 'Failed to finalize booking');
+          } finally {
+            setBookingLoading(false);
+          }
+        },
+        prefill: {
+          name: profile?.name || user.email,
+          email: user.email,
+          contact: profile?.phone || ''
+        },
+        theme: {
+          color: '#3B82F6'
+        },
+        modal: {
+          ondismiss: function() {
+            setBookingLoading(false);
+            showSimpleNotification('warning', 'Payment Cancelled', 'You cancelled the payment process');
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        showSimpleNotification('error', 'Payment Failed', response.error.description);
+        setBookingLoading(false);
+      });
+      rzp.open();
     } catch (err) {
-      console.error('Booking error:', err);
-      showSimpleNotification('error', 'Error', 'Failed to submit booking');
-    } finally {
+      console.error('Payment initialization error:', err);
+      showSimpleNotification('error', 'Error', 'Failed to initialize payment gateway');
       setBookingLoading(false);
     }
   };
@@ -574,54 +672,124 @@ export default function WarehouseDetail() {
 
     setBookingLoading(true);
     try {
-      const response = await fetch('/api/bookings/blocks', {
+      // 1. Create Razorpay Order
+      const orderRes = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          seeker_id: user.id,
-          warehouse_id: warehouse.id,
-          blocks: blocks,
-          start_date: bookingStartDate,
-          end_date: bookingEndDate,
-          total_amount: totalPrice,
-          payment_method: 'online',
-          goods_type: bookingGoodsType,
-          customer_details: {
-            name: profile?.name || user.email,
-            email: user.email,
-            phone: profile?.phone || 'N/A'
-          }
-        })
+        body: JSON.stringify({ amount: totalPrice })
       });
-
-      const result = await response.json();
-      if (result.success) {
-        // Show confirmation modal
-        setLastBooking({
-          id: result.booking?.id || 'booking-' + Date.now(),
-          warehouseName: warehouse.name,
-          warehouseLocation: `${warehouse.city}, ${warehouse.state}`,
-          startDate: bookingStartDate,
-          endDate: bookingEndDate,
-          area: totalArea,
-          totalAmount: totalPrice,
-          blocksBooked: blocks.length,
-          status: 'pending',
-          createdAt: new Date().toISOString()
-        });
-        setShowConfirmation(true);
-        showSimpleNotification('success', 'Grid Booking Submitted!', `${blocks.length} blocks booked successfully. Awaiting admin approval.`);
-        setBookingStartDate('');
-        setBookingEndDate('');
-        setBookingMode('simple'); // Reset to simple mode
-        setBookingGoodsType('');
-      } else {
-        showSimpleNotification('error', 'Booking Failed', result.error || 'Something went wrong');
+      const orderData = await orderRes.json();
+      if (!orderData.success) {
+        showSimpleNotification('error', 'Payment Error', orderData.error || 'Failed to initialize payment');
+        setBookingLoading(false);
+        return;
       }
+
+      // 2. Open Razorpay Checkout
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_dummy_key_id',
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'SmartSpace',
+        description: `Booking for ${warehouse.name}`,
+        order_id: orderData.orderId,
+        handler: async function (response: any) {
+          try {
+            // Verify payment signature
+            const verifyRes = await fetch('/api/payments/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const verifyData = await verifyRes.json();
+            
+            if (!verifyData.success) {
+              showSimpleNotification('error', 'Verification Failed', verifyData.error);
+              setBookingLoading(false);
+              return;
+            }
+
+            // 3. Finalize Booking
+            const bookingRes = await fetch('/api/bookings/blocks', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                seeker_id: user.id,
+                warehouse_id: warehouse.id,
+                blocks: blocks,
+                start_date: bookingStartDate,
+                end_date: bookingEndDate,
+                total_amount: totalPrice,
+                payment_method: 'online',
+                razorpay_payment_id: response.razorpay_payment_id,
+                goods_type: bookingGoodsType,
+                customer_details: {
+                  name: profile?.name || user.email,
+                  email: user.email,
+                  phone: profile?.phone || 'N/A'
+                }
+              })
+            });
+
+            const result = await bookingRes.json();
+            if (result.success) {
+              setLastBooking({
+                id: result.booking?.id || 'booking-' + Date.now(),
+                warehouseName: warehouse.name,
+                warehouseLocation: `${warehouse.city}, ${warehouse.state}`,
+                startDate: bookingStartDate,
+                endDate: bookingEndDate,
+                area: totalArea,
+                totalAmount: totalPrice,
+                blocksBooked: blocks.length,
+                status: 'pending',
+                createdAt: new Date().toISOString()
+              });
+              setShowConfirmation(true);
+              showSimpleNotification('success', 'Grid Booking Submitted!', `${blocks.length} blocks booked successfully. Awaiting admin approval.`);
+              setBookingStartDate('');
+              setBookingEndDate('');
+              setBookingMode('simple');
+              setBookingGoodsType('');
+            } else {
+              showSimpleNotification('error', 'Booking Failed', result.error || 'Something went wrong');
+            }
+          } catch (err) {
+            console.error('Finalize booking error:', err);
+            showSimpleNotification('error', 'Error', 'Failed to finalize grid booking');
+          } finally {
+            setBookingLoading(false);
+          }
+        },
+        prefill: {
+          name: profile?.name || user.email,
+          email: user.email,
+          contact: profile?.phone || ''
+        },
+        theme: {
+          color: '#3B82F6'
+        },
+        modal: {
+          ondismiss: function() {
+            setBookingLoading(false);
+            showSimpleNotification('warning', 'Payment Cancelled', 'You cancelled the payment process');
+          }
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (response: any) {
+        showSimpleNotification('error', 'Payment Failed', response.error.description);
+        setBookingLoading(false);
+      });
+      rzp.open();
     } catch (err) {
-      console.error('Grid booking error:', err);
-      showSimpleNotification('error', 'Error', 'Failed to submit grid booking');
-    } finally {
+      console.error('Payment initialization error:', err);
+      showSimpleNotification('error', 'Error', 'Failed to initialize payment gateway');
       setBookingLoading(false);
     }
   };

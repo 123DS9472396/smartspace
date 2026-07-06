@@ -21,6 +21,7 @@ export function Navbar() {
   // Role-based navigation items
   const navItems = [
     { name: "Find Warehouses", path: "/warehouses", showFor: ['seeker', 'owner'] },
+    { name: "Compare", path: "/compare", showFor: ['seeker', 'all'] },
     { name: "AI Recommendations", path: "/ml-recommendations", showFor: ['seeker'] },
     { name: "Smart Booking", path: "/smart-booking", showFor: ['seeker'] },
     { name: "My Hub", path: "/seeker-hub", showFor: ['seeker'] },

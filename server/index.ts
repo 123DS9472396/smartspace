@@ -19,6 +19,8 @@ import { getOwnerAnalytics, getAdminAnalytics, getWarehouseList, getWarehouseDet
 
 import { supabase } from "./lib/supabaseClient";
 import smartBookingRouter from "./routes/smartBooking";
+import mlFeedbackRouter from "./routes/ml-feedback";
+import paymentsRouter from "./routes/payments";
 
 // Admin booking handlers defined inline
 const getAdminBookings: RequestHandler = async (req, res) => {
@@ -333,10 +335,35 @@ const updateBookingStatus: RequestHandler = async (req, res) => {
         console.log(`⚠️ Could not find owner for warehouse ${warehouseId}`);
         console.log(`   Booking metadata warehouse_owner_id: ${existing.metadata?.warehouse_owner_id}`);
       }
+
+      // -----------------------------------------------------------------------
+      // RAZORPAY: Capture authorized funds if a payment ID exists
+      // -----------------------------------------------------------------------
+      if (existing.metadata?.razorpay_payment_id) {
+        try {
+          console.log(`💰 Attempting to capture Razorpay payment: ${existing.metadata.razorpay_payment_id}`);
+          const paymentRes = await fetch('http://localhost:3000/api/payments/capture', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              payment_id: existing.metadata.razorpay_payment_id,
+              amount: existing.metadata.total_amount
+            })
+          });
+          const captureResult = await paymentRes.json();
+          if (captureResult.success) {
+            console.log(`✅ Successfully captured Razorpay payment!`);
+          } else {
+            console.error(`❌ Razorpay capture failed:`, captureResult.error);
+          }
+        } catch (e) {
+          console.error(`❌ Failed to call capture endpoint:`, e);
+        }
+      }
     }
 
     console.log(`✅ Booking ${bookingId} updated to ${status}`);
-    return res.json({ success: true, message: `Booking ${status} successfully` });
+    return res.json({ success: true, booking: { id: bookingId, status } });
   } catch (error) {
     console.error('❌ Update error:', error);
     return res.status(500).json({ success: false, error: 'Internal error' });
@@ -367,6 +394,10 @@ export function createServer() {
   app.use('/api/recommend-price', recommendPriceRouter);
   app.use('/api/product-pricing', productPricingRouter);
   app.use('/api/cities', citiesRouter);
+  app.use('/api/ml', mlFeedbackRouter);
+
+  // Payment Gateway
+  app.use('/api/payments', paymentsRouter);
 
   // Admin booking routes (inline to avoid module issues)
   app.get("/api/admin/bookings", getAdminBookings);
@@ -615,6 +646,55 @@ export function createServer() {
   });
 
   console.log('✅ All routes registered including admin booking routes');
+  
+  // ---------------------------------------------------------------------------
+  // ZERO-COST INFRASTRUCTURE: Ghost Booking Auto-Expiry Loop
+  // Runs every hour to check for pending bookings older than 48 hours
+  // ---------------------------------------------------------------------------
+  const EXPIRY_HOURS = 48;
+  const EXPIRY_MS = EXPIRY_HOURS * 60 * 60 * 1000;
+  
+  setInterval(async () => {
+    try {
+      console.log('🕒 [Cron] Running Ghost Booking Auto-Expiry check...');
+      const cutoffTime = new Date(Date.now() - EXPIRY_MS).toISOString();
+
+      // Fetch pending bookings older than 48 hours
+      const { data: staleBookings, error: fetchErr } = await supabase
+        .from('activity_logs')
+        .select('id, metadata')
+        .eq('type', 'booking')
+        .lt('created_at', cutoffTime);
+
+      if (fetchErr) {
+        console.error('❌ [Cron] Error fetching stale bookings:', fetchErr);
+        return;
+      }
+
+      // Filter in JS since jsonb filtering can be complex for status
+      const expiredCount = 0;
+      for (const booking of staleBookings || []) {
+        if (booking.metadata?.booking_status === 'pending') {
+          // Update status to expired
+          const newMetadata = {
+            ...booking.metadata,
+            booking_status: 'expired',
+            rejection_reason: 'Auto-expired after 48 hours of inactivity'
+          };
+          
+          await supabase
+            .from('activity_logs')
+            .update({ metadata: newMetadata })
+            .eq('id', booking.id);
+            
+          console.log(`⚠️ [Cron] Auto-expired ghost booking ${booking.id}`);
+        }
+      }
+    } catch (err) {
+      console.error('❌ [Cron] Auto-expiry loop failed:', err);
+    }
+  }, 60 * 60 * 1000); // Run once every hour
+
   return app;
 }
 

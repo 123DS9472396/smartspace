@@ -420,6 +420,31 @@ export const respondToBooking: RequestHandler = async (req, res) => {
       });
     }
 
+    // -----------------------------------------------------------------------
+    // RAZORPAY: Capture authorized funds if a payment ID exists
+    // -----------------------------------------------------------------------
+    if (newStatus === "approved" && booking.metadata?.razorpay_payment_id) {
+      try {
+        console.log(`💰 Attempting to capture Razorpay payment: ${booking.metadata.razorpay_payment_id}`);
+        const paymentRes = await fetch('http://localhost:3000/api/payments/capture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payment_id: booking.metadata.razorpay_payment_id,
+            amount: booking.metadata.total_amount
+          })
+        });
+        const captureResult = await paymentRes.json();
+        if (captureResult.success) {
+          console.log(`✅ Successfully captured Razorpay payment by Owner!`);
+        } else {
+          console.error(`❌ Razorpay capture failed:`, captureResult.error);
+        }
+      } catch (e) {
+        console.error(`❌ Failed to call capture endpoint:`, e);
+      }
+    }
+
     console.log(`✅ Owner ${owner_id} ${action}d booking ${booking_id}`);
     return res.json({
       success: true,

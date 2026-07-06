@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartSpace - Complete Project Workflow Presentation</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1b2330;
+      --muted: #4b5568;
+      --primary: #0d6efd;
+      --secondary: #0a8f6a;
+      --border: #d9e1ee;
+      --accent: #ffe08a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #102542 0%, #0d6efd 55%, #30b98f 100%);
+      color: #fff;
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 14px 34px rgba(0,0,0,0.2);
+      margin-bottom: 22px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+      letter-spacing: .2px;
+    }
+
+    .hero p {
+      margin: 0;
+      opacity: 0.95;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      margin: 14px 0 22px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 16px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+    }
+
+    .section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 5px 14px rgba(0,0,0,0.04);
+    }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 1.4rem;
+      color: #0d2f63;
+    }
+
+    h3 {
+      margin: 10px 0 6px;
+      font-size: 1.05rem;
+      color: #0a5fa8;
+    }
+
+    h4 {
+      margin: 10px 0 4px;
+      font-size: .98rem;
+      color: #145c4a;
+    }
+
+    .muted { color: var(--muted); }
+
+    .chip {
+      display: inline-block;
+      margin: 3px 6px 3px 0;
+      padding: 4px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid #b9c9e2;
+      background: #eef4ff;
+      color: #214d87;
+    }
+
+    .flow {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .flow li { margin: 4px 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f5ff;
+      color: #234d8f;
+      font-weight: 700;
+    }
+
+    .note {
+      background: #fff7df;
+      border: 1px solid #f2d488;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #6a4b00;
+      margin-top: 10px;
+    }
+
+    .code {
+      font-family: Consolas, "Courier New", monospace;
+      background: #f4f6fa;
+      border: 1px solid #dbe4f2;
+      border-radius: 8px;
+      padding: 2px 6px;
+      font-size: 13px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .section, .card, .hero {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+      .hero { color: #000; background: #fff; border: 1px solid #ccc; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <h1>SmartSpace: Complete Project Workflow Presentation</h1>
+      <p>Prepared for external panel presentation by Dipesh and team</p>
+    </div>
+
+    <div class="section">
+      <h2>Opening Speech Script (Use Directly)</h2>
+      <p><b>Good morning sir/ma'am.</b> We are Team SmartSpace. I am <b>Dipesh</b>, and today I will present our complete project architecture and workflow for solving warehouse discovery and operations challenges in Maharashtra.</p>
+      <p>My team distribution is:</p>
+      <ul class="flow">
+        <li><b>Dipesh + Manthan:</b> Seeker Module</li>
+        <li><b>Pranjal:</b> Admin Module</li>
+        <li><b>Sahil:</b> Owner Module + Supabase + Data generation and migration</li>
+      </ul>
+      <p>As we know, the warehousing and logistics sector in Maharashtra has major pain points: fragmented listing systems, poor visibility of live availability, slow owner-admin verification cycles, weak trust layers, and non-intelligent property recommendations. SmartSpace addresses these with a full-stack, data-driven and AI-assisted platform.</p>
+      <p>In this presentation I will cover the complete end-to-end system: seeker journey, owner journey, admin workflow, backend APIs, shared ML/LLM logic, and Supabase schema with workflow tables.</p>
+    </div>
+
+    <div class="section">
+      <h2>Project Snapshot</h2>
+      <div class="grid">
+        <div class="card"><b>Frontend</b><br/>React + TypeScript + Vite + Tailwind + Radix</div>
+        <div class="card"><b>Backend</b><br/>Express + TypeScript routes in server</div>
+        <div class="card"><b>Database</b><br/>Supabase Postgres + RLS + migrations</div>
+        <div class="card"><b>Intelligence Layer</b><br/>ML ranking + multi-provider LLM fallback</div>
+      </div>
+      <div>
+        <span class="chip">Maharashtra-focused warehouse dataset</span>
+        <span class="chip">Role-based modules (Seeker/Owner/Admin)</span>
+        <span class="chip">Booking lifecycle with occupancy impact</span>
+        <span class="chip">Submission-to-approval-to-live workflow</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>System Working Flow (High-Level)</h2>
+      <ol class="flow">
+        <li>User opens frontend app and enters role-based flow.</li>
+        <li>Frontend pages call REST APIs under <span class="code">/api/*</span>.</li>
+        <li>Server routes process business logic and read/write Supabase tables.</li>
+        <li>Shared ML/LLM layer ranks recommendations and powers assistant responses.</li>
+        <li>Admin and Owner decisions update booking/submission states in database.</li>
+        <li>Dashboards and occupancy/availability are generated from live persisted data.</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>Seeker Module: Complete Journey and Code Files</h2>
+      <h3>End-to-End Seeker Flow</h3>
+      <ol class="flow">
+        <li>Seeker lands on home/browse pages.</li>
+        <li>Search + filters fetch warehouse list from backend/Supabase.</li>
+        <li>User opens warehouse detail and sees amenities, pricing, occupancy, and block-level view.</li>
+        <li>User selects blocks/dates and requests booking.</li>
+        <li>Booking record is created and shown in seeker booking pages.</li>
+        <li>Seeker can save warehouses, send inquiries, schedule visits, and track activity.</li>
+      </ol>
+
+      <h3>Seeker Frontend Pages</h3>
+      <table>
+        <tr><th>File</th><th>Purpose</th></tr>
+        <tr><td>client/pages/Index.tsx</td><td>Landing page and featured stats/cards.</td></tr>
+        <tr><td>client/pages/Warehouses.tsx</td><td>Main seeker browse/search/filter list with saved toggle and navigation.</td></tr>
+        <tr><td>client/pages/WarehouseDetail.tsx</td><td>Detailed property page with 3D booking and owner insight panel.</td></tr>
+        <tr><td>client/pages/SeekerHub.tsx</td><td>Seeker home dashboard (saved/bookings quick access).</td></tr>
+        <tr><td>client/pages/SeekerBookingsPage.tsx</td><td>Booking history and status timeline for seeker.</td></tr>
+        <tr><td>client/pages/Saved.tsx</td><td>Saved warehouse management.</td></tr>
+        <tr><td>client/pages/Activity.tsx</td><td>Activity feed (booking/inquiry interactions).</td></tr>
+        <tr><td>client/pages/Compare.tsx</td><td>Warehouse comparison flow for decision support.</td></tr>
+        <tr><td>client/pages/SeekerProfilePage.tsx</td><td>Profile display/edit for seeker identity context.</td></tr>
+        <tr><td>client/pages/MLRecommendationsPage.tsx</td><td>Recommendation-focused page.</td></tr>
+        <tr><td>client/pages/SmartBooking.tsx</td><td>NLP booking assistant interface for seekers.</td></tr>
+      </table>
+
+      <h3>Seeker Components and Service Files</h3>
+      <table>
+        <tr><th>File</th><th>Purpose</th></tr>
+        <tr><td>client/components/GridBlockSelector.tsx</td><td>Block selection for warehouse booking.</td></tr>
+        <tr><td>client/components/BlockGridCSS3D.tsx</td><td>3D visual block map.</td></tr>
+        <tr><td>client/components/BookingSummary.tsx</td><td>Booking details review before submit.</td></tr>
+        <tr><td>client/components/BookingSummary3D.tsx</td><td>3D booking confirmation flow.</td></tr>
+        <tr><td>client/components/InquiryModal.tsx</td><td>Inquiry creation popup.</td></tr>
+        <tr><td>client/components/ScheduleVisitModal.tsx</td><td>Visit scheduling dialog.</td></tr>
+        <tr><td>client/components/SmartBookingAssistant.tsx</td><td>AI-assisted seeker recommendations/chat.</td></tr>
+        <tr><td>client/services/warehouseService.ts</td><td>Warehouse fetch/list/detail/stat APIs and transformations.</td></tr>
+        <tr><td>client/services/blockBookingService.ts</td><td>Booking request helper logic.</td></tr>
+        <tr><td>client/services/savedActivityService.ts</td><td>Saved and activity data service helpers.</td></tr>
+        <tr><td>client/services/smartBookingService.ts</td><td>Smart booking orchestration.</td></tr>
+        <tr><td>client/services/aiService.ts</td><td>LLM provider fallback and response processing.</td></tr>
+        <tr><td>client/hooks/use-recommendations.ts</td><td>Recommendation lifecycle and preferences state.</td></tr>
+      </table>
+
+      <h3>Seeker Backend Routes</h3>
+      <ul class="flow">
+        <li>server/routes/bookings.ts</li>
+        <li>server/routes/simple-booking.ts</li>
+        <li>server/routes/saved.ts</li>
+        <li>server/routes/activity.ts</li>
+        <li>server/routes/schedule-visit.ts</li>
+        <li>server/routes/smartBooking.ts</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Owner Module: Complete Journey and Code Files</h2>
+      <h3>Owner Flow</h3>
+      <ol class="flow">
+        <li>Owner logs in and creates property submission.</li>
+        <li>Submission enters pending queue for admin review.</li>
+        <li>Owner tracks property status and notifications.</li>
+        <li>Owner responds to booking requests (approve/reject).</li>
+        <li>Owner observes analytics and pricing tools for business decisions.</li>
+      </ol>
+
+      <h3>Owner Frontend Pages</h3>
+      <ul class="flow">
+        <li>client/pages/ListProperty.tsx</li>
+        <li>client/pages/OwnerProperties.tsx</li>
+        <li>client/pages/OwnerAnalyticsPage.tsx</li>
+        <li>client/pages/OwnerNotificationsPage.tsx</li>
+        <li>client/pages/OwnerProfilePage.tsx</li>
+        <li>client/pages/SubmissionView.tsx</li>
+      </ul>
+
+      <h3>Owner/Submission Backend Files</h3>
+      <ul class="flow">
+        <li>server/routes/owner-bookings.ts</li>
+        <li>server/routes/warehouse-submissions.ts</li>
+        <li>server/routes/warehouseSubmission.ts</li>
+        <li>server/routes/recommend-price.ts</li>
+        <li>server/routes/product-pricing.ts</li>
+        <li>server/routes/cities.ts</li>
+      </ul>
+
+      <h3>Owner Supporting Components/Services</h3>
+      <ul class="flow">
+        <li>client/components/PricingRecommendationModal.tsx</li>
+        <li>client/components/ProductPricingCalculator.tsx</li>
+        <li>client/services/verificationService.ts</li>
+        <li>client/services/documentAnalysisService.ts</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Admin Module: Complete Journey and Code Files</h2>
+      <h3>Admin Flow</h3>
+      <ol class="flow">
+        <li>Admin logs in to dashboard overview.</li>
+        <li>Admin reviews pending warehouse submissions and updates status.</li>
+        <li>Admin moderates booking states and monitors KPIs.</li>
+        <li>Admin reviews user/verification pipelines.</li>
+      </ol>
+
+      <h3>Admin Frontend Pages</h3>
+      <ul class="flow">
+        <li>client/pages/AdminDashboard.tsx</li>
+        <li>client/pages/AdminBookingsPage.tsx</li>
+        <li>client/pages/AdminWarehousesPage.tsx</li>
+        <li>client/pages/AdminWarehouseSubmissionsPage.tsx</li>
+        <li>client/pages/AdminUsersPage.tsx</li>
+        <li>client/pages/AdminVerificationPage.tsx</li>
+        <li>client/pages/AdminAnalyticsPage.tsx</li>
+      </ul>
+
+      <h3>Admin Backend Routes</h3>
+      <ul class="flow">
+        <li>server/routes/admin-bookings.ts</li>
+        <li>server/routes/admin-warehouses.ts</li>
+        <li>server/routes/admin-warehouse-submissions.ts</li>
+        <li>server/routes/admin-user-activity.ts</li>
+        <li>server/routes/analytics.ts</li>
+        <li>server/routes/approveSubmission.ts</li>
+      </ul>
+
+      <h3>Admin Integration Entry</h3>
+      <ul class="flow">
+        <li>server/index.ts (central API route wiring)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Auth, Navigation and Shared Frontend Core</h2>
+      <table>
+        <tr><th>File</th><th>Role</th></tr>
+        <tr><td>client/contexts/AuthContext.tsx</td><td>Session bootstrap, demo auth fallback, role profile state.</td></tr>
+        <tr><td>client/components/ProtectedRoute.tsx</td><td>Route-level role guard (seeker/owner/admin).</td></tr>
+        <tr><td>client/components/Navbar.tsx</td><td>Main navigation and module entry points.</td></tr>
+        <tr><td>client/main.tsx</td><td>Application root mount and provider composition.</td></tr>
+        <tr><td>client/App.tsx</td><td>Route tree and top-level app shell.</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Backend Complete Route Inventory</h2>
+      <p class="muted">All route handler files currently used in the server module:</p>
+      <div class="two-col">
+        <ul class="flow">
+          <li>server/routes/activity.ts</li>
+          <li>server/routes/admin-bookings.ts</li>
+          <li>server/routes/admin-user-activity.ts</li>
+          <li>server/routes/admin-warehouse-submissions.ts</li>
+          <li>server/routes/admin-warehouses.ts</li>
+          <li>server/routes/analytics.ts</li>
+          <li>server/routes/approveSubmission.ts</li>
+          <li>server/routes/bookings.ts</li>
+          <li>server/routes/cities.ts</li>
+          <li>server/routes/debug.ts</li>
+          <li>server/routes/demo.ts</li>
+        </ul>
+        <ul class="flow">
+          <li>server/routes/owner-bookings.ts</li>
+          <li>server/routes/product-pricing.ts</li>
+          <li>server/routes/recommend-price.ts</li>
+          <li>server/routes/recommend.ts</li>
+          <li>server/routes/saved.ts</li>
+          <li>server/routes/schedule-visit.ts</li>
+          <li>server/routes/simple-booking.ts</li>
+          <li>server/routes/smartBooking.ts</li>
+          <li>server/routes/warehouse-submissions.ts</li>
+          <li>server/routes/warehouseSubmission.ts</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Shared Intelligence Layer (ML + LLM)</h2>
+      <table>
+        <tr><th>File</th><th>Purpose</th></tr>
+        <tr><td>shared/advanced-llm-service.ts</td><td>Primary multi-provider LLM orchestration and fallback handling.</td></tr>
+        <tr><td>shared/advanced-ml-algorithms.ts</td><td>Advanced recommendation scoring logic.</td></tr>
+        <tr><td>shared/ml-algorithms.ts</td><td>Core ML model utilities and ranking helpers.</td></tr>
+        <tr><td>shared/recommendation.ts</td><td>Recommendation pipeline helper logic.</td></tr>
+        <tr><td>shared/api.ts</td><td>Shared API types/contracts used by frontend and backend.</td></tr>
+        <tr><td>shared/gemini-ai.ts + shared/gemini-api.ts</td><td>Gemini-specific integration helpers.</td></tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Supabase and Database: Complete Table Landscape</h2>
+      <h3>Core operational tables (actively used by app flows)</h3>
+      <ul class="flow">
+        <li>profiles</li>
+        <li>owner_profiles</li>
+        <li>seeker_profiles</li>
+        <li>warehouses</li>
+        <li>warehouse_submissions</li>
+        <li>bookings</li>
+        <li>saved_warehouses</li>
+        <li>activity_logs</li>
+        <li>inquiries</li>
+        <li>reviews / warehouse_reviews</li>
+        <li>notifications</li>
+        <li>payment_transactions</li>
+        <li>verification_queue</li>
+        <li>admin_notifications</li>
+      </ul>
+
+      <h3>Analytics/pricing/support tables seen in schema scripts</h3>
+      <ul class="flow">
+        <li>pricing_reference</li>
+        <li>ml_recommendations</li>
+        <li>product_market_prices</li>
+        <li>storage_rate_config</li>
+        <li>document_verifications</li>
+        <li>audit_logs</li>
+        <li>warehouse_views</li>
+        <li>search_history</li>
+        <li>verification_requests</li>
+        <li>user_interactions</li>
+      </ul>
+
+      <h3>Schema Source Locations</h3>
+      <ul class="flow">
+        <li>database/*.sql (setup, migrations, fixes, RLS policies)</li>
+        <li>supabase/migrations/*.sql (versioned migrations)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Data Setup / Import / Repair Pipeline Files</h2>
+      <p class="muted">These files are critical for data initialization, migration, and quality correction:</p>
+      <div class="two-col">
+        <ul class="flow">
+          <li>scripts/import-all-warehouses.ts</li>
+          <li>scripts/import-via-api.ts</li>
+          <li>scripts/generate-warehouse-sql.ts</li>
+          <li>scripts/setup-database.ts</li>
+          <li>scripts/deploy-database-schema.ts</li>
+          <li>scripts/verify-data.js</li>
+          <li>scripts/fix-warehouse-data-quality.js</li>
+        </ul>
+        <ul class="flow">
+          <li>scripts/fix-owner-ids.js</li>
+          <li>scripts/comprehensive-warehouse-fix.js</li>
+          <li>database/complete_supabase_setup.sql</li>
+          <li>database/fix_storage_rls.sql</li>
+          <li>database/fix_warehouse_submissions_rls.sql</li>
+          <li>database/fix_approval_trigger.sql</li>
+          <li>database/VERIFY_AND_FIX.sql</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Module-wise Team Distribution (Presentation Slide Ready)</h2>
+      <table>
+        <tr><th>Team Member(s)</th><th>Module</th><th>Ownership Scope</th></tr>
+        <tr>
+          <td>Dipesh + Manthan</td>
+          <td>Seeker Module</td>
+          <td>Search, browse, warehouse detail, booking UI, seeker dashboard, saved activity, recommendation UX.</td>
+        </tr>
+        <tr>
+          <td>Pranjal</td>
+          <td>Admin Module</td>
+          <td>Admin dashboard, submission moderation, booking status governance, user and analytics monitoring.</td>
+        </tr>
+        <tr>
+          <td>Sahil</td>
+          <td>Owner + Supabase + Data Layer</td>
+          <td>Owner workflows, schema and RLS governance, migration scripting, large-scale import and data correctness.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h2>Complete Demonstration Sequence for External Panel</h2>
+      <ol class="flow">
+        <li><b>Intro:</b> State team, Maharashtra problem context, objective of SmartSpace.</li>
+        <li><b>Seeker flow live demo:</b> Home -> Browse -> Detail -> 3D blocks -> Booking request -> Seeker bookings.</li>
+        <li><b>Owner flow live demo:</b> List property -> submission status -> booking response -> owner analytics.</li>
+        <li><b>Admin flow live demo:</b> Admin dashboard -> pending submissions -> booking moderation -> insights.</li>
+        <li><b>Backend/API explanation:</b> Show route structure and request/response flow.</li>
+        <li><b>Database explanation:</b> Explain key tables and RLS-driven role separation.</li>
+        <li><b>AI/ML explanation:</b> Explain recommendation + LLM fallback architecture.</li>
+        <li><b>Closing:</b> Business impact, scalability, and roadmap.</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>Closing Script (Use Directly)</h2>
+      <p>In conclusion, SmartSpace is not just a listing platform; it is a complete warehouse intelligence and operations system. We have designed role-specific modules for seekers, owners, and admins, with a robust backend and Supabase data layer that supports transparency, trust, and real-time operational decisions. Our Maharashtra-focused implementation demonstrates practical value for the warehousing and logistics ecosystem.</p>
+      <p>Thank you, sir/ma'am. We are ready for questions.</p>
+      <div class="note">
+        Presentation tip: Keep this file open in browser and scroll section-by-section during viva/demo. For PDF submission, print this page to PDF.
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>

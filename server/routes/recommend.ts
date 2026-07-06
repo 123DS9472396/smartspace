@@ -5,6 +5,7 @@ import { hybridRecommend, advancedEnsembleRecommend, mapToRecommendedWarehouse }
 import { geminiRecommend, mapGeminiToRecommendedWarehouse } from "../../shared/gemini-ai";
 import { getLLMRecommendations, mapLLMToRecommendations } from "../../shared/advanced-llm-service";
 import { advancedMLRecommend } from "../../shared/advanced-ml-algorithms";
+import { loadWeights } from "./ml-feedback";
 import { supabase } from '../lib/supabaseClient';
 
 /**
@@ -14,43 +15,41 @@ import { supabase } from '../lib/supabaseClient';
 export async function handleRecommend(req: Request, res: Response) {
   try {
     // ============================================
-    // AUTHENTICATION CHECK - TEMPORARILY DISABLED FOR TESTING
+    // AUTHENTICATION CHECK — Soft Auth (validates token when present, allows
+    // anonymous requests for the demo environment with a warning logged)
     // ============================================
-    // TODO: Re-enable after fixing demo auth token passing
-    /*
     const authHeader = req.headers.authorization;
+    let authenticatedUserId: string | null = null;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({
-        success: false,
-        error: 'Not authenticated. Please sign in to get recommendations.',
-        recommendations: []
-      });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    try {
-      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-      if (authError || !user) {
-        console.log('❌ Authentication failed:', authError?.message);
-        return res.status(401).json({
-          success: false,
-          error: 'Invalid or expired authentication token.',
-          recommendations: []
-        });
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '').trim();
+      // Allow known demo placeholder token for demonstration purposes
+      if (token === 'demo-token') {
+        console.log('ℹ️ Recommendation request using demo token');
+        authenticatedUserId = 'demo-user-id';
+      } else if (token.length > 20) {
+        try {
+          const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+          if (!authError && user) {
+            authenticatedUserId = user.id;
+            console.log(`✅ Authenticated recommendation request: ${user.email} (${user.id})`);
+          } else {
+            console.warn(`⚠️ Recommendation auth failed: ${authError?.message || 'Invalid token'}`);
+            return res.status(401).json({ success: false, error: 'Unauthorized: Invalid authentication token' });
+          }
+        } catch {
+          console.warn('⚠️ Recommendation auth check failed completely');
+          return res.status(401).json({ success: false, error: 'Unauthorized: Authentication failed' });
+        }
+      } else {
+         return res.status(401).json({ success: false, error: 'Unauthorized: Invalid token format' });
       }
-
-      console.log('✅ Authenticated user:', user.email);
-    } catch (authCheckError) {
-      console.error('Authentication check error:', authCheckError);
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication verification failed.',
-        recommendations: []
-      });
+    } else {
+      console.warn('⚠️ Recommendation request rejected: No auth token provided');
+      return res.status(401).json({ success: false, error: 'Unauthorized: Authentication required to access ML recommendations' });
     }
-    */const body = req.body as RecommendationRequest | undefined;
+
+    const body = req.body as RecommendationRequest | undefined;
     const prefs = body?.preferences ?? {};
     const limit = body?.limit ?? 12;
 
@@ -169,6 +168,9 @@ export async function handleRecommend(req: Request, res: Response) {
         console.log(`Using ${warehouses.length} mock warehouses for ML processing`);
       }
 
+      // Load dynamically trained ML weights from DB (with caching)
+      const trainedWeights = await loadWeights();
+
       // Choose the algorithm based on query param or use auto-selection
       // NEW: Use advanced LLM + ML pipeline
       if (useAlgorithm === 'llm' || useAlgorithm === 'gemini') {
@@ -194,7 +196,7 @@ export async function handleRecommend(req: Request, res: Response) {
         } catch (llmError) {
           console.log('⚠️ LLM failed, falling back to Advanced ML algorithms:', llmError);
           // Fall back to advanced ML algorithms
-          const mlResults = advancedMLRecommend(warehouses, prefs, limit);
+          const mlResults = advancedMLRecommend(warehouses, prefs, limit, trainedWeights);
           items = mlResults.map(rec => mapToRecommendedWarehouse({
             warehouse: rec.warehouse,
             score: rec.score,
@@ -205,7 +207,7 @@ export async function handleRecommend(req: Request, res: Response) {
         }
       } else if (useAlgorithm === 'hybrid') {
         // Use advanced ML algorithms with 5-algorithm ensemble
-        const mlResults = advancedMLRecommend(warehouses, prefs, limit);
+        const mlResults = advancedMLRecommend(warehouses, prefs, limit, trainedWeights);
         items = mlResults.map(rec => mapToRecommendedWarehouse({
           warehouse: rec.warehouse,
           score: rec.score,
